@@ -36,6 +36,7 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": false, // Pas nécessaire pour un backend Node.js classique
     "noUncheckedSideEffectImports": true,
+    "allowImportingTsExtensions": true, // Ajouté pour permettre l'import avec extension .ts
 
     // Style (optionnel, à activer si besoin)
     // "noImplicitReturns": true,
