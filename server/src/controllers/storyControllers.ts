@@ -1,5 +1,11 @@
 import type { Request, Response, NextFunction } from 'express';
-import { Story } from '../models/story.js';
+import type { JwtPayload } from 'jsonwebtoken';
+import { Story } from '../models/story.ts';
+
+// Extension de l'interface Request pour inclure user
+export interface AuthenticatedRequest extends Request {
+  user?: string | JwtPayload;
+}
 
 // Récupérer toutes les stories
 export async function getAllStories(req: Request, res: Response, next: NextFunction) {
@@ -12,10 +18,28 @@ export async function getAllStories(req: Request, res: Response, next: NextFunct
 }
 
 // Créer une nouvelle story
-export async function createStory(req: Request, res: Response, next: NextFunction) {
+export async function createStory(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
-    const { title, content, author } = req.body;
-    const story = new Story({ title, content, author });
+    const { title, content, description, status } = req.body;
+
+    // Vérifier que le title est fourni
+    if (!title) {
+      return res.status(400).json({ message: 'Title est requis' });
+    }
+
+    // Récupérer l'ID de l'utilisateur depuis le JWT
+    const author = (req.user as JwtPayload)?.userId;
+    if (!author) {
+      return res.status(401).json({ message: 'Utilisateur non authentifié' });
+    }
+
+    const story = new Story({
+      title,
+      content,
+      description,
+      status: status || 'draft',
+      author
+    });
     await story.save();
     res.status(201).json(story);
   } catch (err) {

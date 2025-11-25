@@ -1,21 +1,22 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middlewares/authMiddleware.js';
-import { roleMiddleware } from '../middlewares/roleMiddleware.js';
+import { authMiddleware } from '../middlewares/authMiddleware.ts';
+import { roleMiddleware } from '../middlewares/roleMiddleware.ts';
 import {
   createUser,
+  login,
   getAllUsers,
   getUserById,
   updateUser,
   deleteUser
-} from '../controllers/userControllers.js';
+} from '../controllers/userControllers.ts';
 
 const router = Router();
-router.use(authMiddleware);
 
-router.post('/', roleMiddleware('admin'), createUser);
+router.post('/login', login);
+router.post('/', createUser);
 router.get('/', roleMiddleware('admin'), getAllUsers);
-router.get('/:userId', getUserById);
-router.patch('/:userId', roleMiddleware('admin'), updateUser);
-router.delete('/:userId', roleMiddleware('admin'), deleteUser);
+router.get('/:userId', authMiddleware, getUserById);
+router.patch('/:userId', authMiddleware, roleMiddleware('admin'), updateUser);
+router.delete('/:userId', authMiddleware, roleMiddleware('admin'), deleteUser);
 
 export default router;

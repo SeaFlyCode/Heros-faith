@@ -1,22 +1,20 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middlewares/authMiddleware.js';
-import { roleMiddleware } from '../middlewares/roleMiddleware.js';
+import { authMiddleware } from '../middlewares/authMiddleware.ts';
+import { roleMiddleware } from '../middlewares/roleMiddleware.ts';
 import {
     createStory,
     getAllStories,
     getStoryById,
     updateStory,
     deleteStory
-} from '../controllers/storyControllers.js';
+} from '../controllers/storyControllers.ts';
 
 const router = Router();
 
-router.use(authMiddleware); // Toutes les routes sont protégées
-
-router.post('/', createStory);
-router.get('/', roleMiddleware('admin'), getAllStories);
+router.post('/', authMiddleware, createStory);
+router.get('/', getAllStories);
 router.get('/:storyId', getStoryById);
-router.patch('/:storyId', roleMiddleware('admin'), updateStory);
-router.delete('/:storyId', roleMiddleware('admin'), deleteStory);
+router.patch('/:storyId', authMiddleware, roleMiddleware('admin'), updateStory);
+router.delete('/:storyId', authMiddleware, roleMiddleware('admin'), deleteStory);
 
 export default router;

@@ -1,22 +1,22 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middlewares/authMiddleware.js';
-import { roleMiddleware } from '../middlewares/roleMiddleware.js';
+import { authMiddleware } from '../middlewares/authMiddleware.ts';
+import { roleMiddleware } from '../middlewares/roleMiddleware.ts';
 import {
   createNoeud,
   getAllNoeuds,
   getNoeudById,
   updateNoeud,
   deleteNoeud
-} from '../controllers/noeudControllers.js';
+} from '../controllers/noeudControllers.ts';
 
 const router = Router();
 router.use(authMiddleware);
 
-router.post('/', createNoeud);
+router.post('/', roleMiddleware('creator'), createNoeud);
 router.get('/', getAllNoeuds);
 router.get('/:noeudId', getNoeudById);
-router.patch('/:noeudId', updateNoeud);
-router.delete('/:noeudId', roleMiddleware('admin'), deleteNoeud);
+router.patch('/:noeudId', roleMiddleware('creator'), updateNoeud);
+router.delete('/:noeudId', roleMiddleware('creator'), deleteNoeud);
 
 export default router;
 

@@ -22,7 +22,6 @@ export interface ICensorship {
 export interface IStory extends Document {
   title: string;
   description?: string;
-  content: string;
   author: mongoose.Types.ObjectId;
   status: 'draft' | 'published';
   createdAt: Date;
@@ -41,7 +40,6 @@ const CommentSchema = new Schema<IComment>({
 const StorySchema: Schema<IStory> = new Schema<IStory>({
   title: { type: String, required: true },
   description: { type: String },
-  content: { type: String, required: true },
   author: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   status: { type: String, enum: ['draft', 'published'], default: 'draft' },
   comments: { type: [CommentSchema], default: [] },

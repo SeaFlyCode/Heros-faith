@@ -1,13 +1,13 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middlewares/authMiddleware.js';
-import { roleMiddleware } from '../middlewares/roleMiddleware.js';
+import { authMiddleware } from '../middlewares/authMiddleware.ts';
+import { roleMiddleware } from '../middlewares/roleMiddleware.ts';
 import {
   createPage,
   getAllPages,
   getPageById,
   updatePage,
   deletePage
-} from '../controllers/pageControllers.js';
+} from '../controllers/pageControllers.ts';
 
 const router = Router();
 router.use(authMiddleware);

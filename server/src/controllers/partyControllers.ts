@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { Party } from '../models/party.js';
+import { Party } from '../models/party.ts';
 
 export async function createParty(req: Request, res: Response, next: NextFunction) {
   try {

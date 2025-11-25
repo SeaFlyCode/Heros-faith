@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { Page } from '../models/page.js';
+import { Page } from '../models/page.ts';
 
 export async function createPage(req: Request, res: Response, next: NextFunction) {
   try {

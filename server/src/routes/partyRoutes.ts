@@ -1,22 +1,22 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middlewares/authMiddleware.js';
-import { roleMiddleware } from '../middlewares/roleMiddleware.js';
+import { authMiddleware } from '../middlewares/authMiddleware.ts';
+import { roleMiddleware } from '../middlewares/roleMiddleware.ts';
 import {
   createParty,
   getAllParties,
   getPartyById,
   updateParty,
   deleteParty
-} from '../controllers/partyControllers.js';
+} from '../controllers/partyControllers.ts';
 
 const router = Router();
 router.use(authMiddleware);
 
-router.post('/', createParty);
+router.post('/', roleMiddleware('user'), createParty);
 router.get('/', getAllParties);
 router.get('/:partyId', getPartyById);
-router.patch('/:partyId', updateParty);
-router.delete('/:partyId', roleMiddleware('admin'), deleteParty);
+router.patch('/:partyId', roleMiddleware('user'), updateParty);
+router.delete('/:partyId', roleMiddleware('user'), deleteParty);
 
 export default router;
 
