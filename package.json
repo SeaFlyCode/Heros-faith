@@ -4,7 +4,7 @@
   "description": "",
   "scripts": {
     "install:all": "npm install && cd client && npm install && cd ../server && npm install",
-    "dev": "concurrently \"npm run dev:root\" \"npm run dev:client\" \"npm run dev:server\""
+    "dev": "concurrently \"npm run dev:root\" \"npm run dev:client\" \"npm run dev:server\"",
     "dev:client": "cd client && npm run dev",
     "dev:server": "cd server && npm run dev"
   },
@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/SeaFlyCode/Heros-faith#readme",
   "devDependencies": {
+    "@types/swagger-jsdoc": "^6.0.4",
     "concurrently": "^9.2.1"
   }
 }

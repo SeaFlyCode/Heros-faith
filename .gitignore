@@ -14,6 +14,8 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 
+package-lock.json
+
 # Misc
 .DS_Store
 /pnp*

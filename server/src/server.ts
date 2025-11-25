@@ -2,6 +2,7 @@ import express from 'express';
 import { errorHandler } from './middlewares/errorHandler.ts';
 import { connectDB } from './config/database.ts';
 import dotenv from 'dotenv';
+
 dotenv.config();
 
 const app = express();
