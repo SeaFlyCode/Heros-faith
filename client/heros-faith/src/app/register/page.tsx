@@ -4,11 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import PrismTransition from "@/components/PrismTransition";
 import { usersApi, type ApiError } from "@/api";
-import { useAuth } from "@/hooks/useAuth";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { login: authLogin } = useAuth();
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -17,6 +15,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,12 +77,19 @@ export default function RegisterPage() {
       const loginData = await usersApi.login({ email, password });
       console.log('✅ Connexion réussie:', { token: loginData.token.substring(0, 20) + '...', user: loginData.user });
 
-      // Utiliser le hook d'authentification
-      authLogin(loginData.token, loginData.user);
+      // Stocker directement dans localStorage pour éviter les conflits de state
+      localStorage.setItem('token', loginData.token);
+      localStorage.setItem('user', JSON.stringify(loginData.user));
+      console.log('✅ Token et utilisateur sauvegardés');
 
-      // Redirection vers la page d'accueil
+      // Masquer le Prism avant la redirection pour éviter les conflits DOM avec WebGL
+      setIsRedirecting(true);
+
+      // Redirection vers la page d'accueil avec un délai pour laisser React nettoyer le DOM
       console.log('➡️ Redirection vers /');
-      router.push("/");
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 150);
     } catch (err) {
       const apiError = err as ApiError;
       console.error('❌ Erreur lors de l\'inscription:', apiError);
@@ -95,18 +101,20 @@ export default function RegisterPage() {
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden flex items-center justify-center bg-black">
-      {/* Background animé Prism avec transition */}
-      <PrismTransition
-        animationType="rotate"
-        timeScale={0.5}
-        height={2}
-        baseWidth={3}
-        targetScale={2}
-        hueShift={0}
-        colorFrequency={1}
-        noise={0.08}
-        glow={0.6}
-      />
+      {/* Background animé Prism avec transition - masqué lors de la redirection pour éviter les conflits WebGL */}
+      {!isRedirecting && (
+        <PrismTransition
+          animationType="rotate"
+          timeScale={0.5}
+          height={2}
+          baseWidth={3}
+          targetScale={2}
+          hueShift={0}
+          colorFrequency={1}
+          noise={0.08}
+          glow={0.6}
+        />
+      )}
 
       {/* Bouton retour */}
       <button
