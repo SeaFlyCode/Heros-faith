@@ -4,16 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import PrismTransition from "@/components/PrismTransition";
 import { usersApi, type ApiError } from "@/api";
-import { useAuth } from "@/hooks/useAuth";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login: authLogin } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,12 +37,19 @@ export default function LoginPage() {
       const data = await usersApi.login({ email, password });
       console.log('✅ Connexion réussie:', { token: data.token.substring(0, 20) + '...', user: data.user });
 
-      // Utiliser le hook d'authentification
-      authLogin(data.token, data.user);
+      // Stocker directement dans localStorage pour éviter les conflits de state
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      console.log('✅ Token et utilisateur sauvegardés');
+
+      // Masquer le Prism avant la redirection pour éviter les conflits DOM avec WebGL
+      setIsRedirecting(true);
 
       console.log('➡️ Redirection vers /');
-      // Redirection vers la page d'accueil
-      router.push("/");
+      // Redirection vers la page d'accueil avec un délai pour laisser React nettoyer le DOM
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 150);
     } catch (err) {
       const apiError = err as ApiError;
       console.error('❌ Erreur lors de la connexion:', apiError);
@@ -55,18 +61,20 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden flex items-center justify-center bg-black">
-      {/* Background animé Prism avec transition */}
-      <PrismTransition
-        animationType="rotate"
-        timeScale={0.5}
-        height={2}
-        baseWidth={3}
-        targetScale={2}
-        hueShift={0}
-        colorFrequency={1}
-        noise={0.08}
-        glow={0.6}
-      />
+      {/* Background animé Prism avec transition - masqué lors de la redirection pour éviter les conflits WebGL */}
+      {!isRedirecting && (
+        <PrismTransition
+          animationType="rotate"
+          timeScale={0.5}
+          height={2}
+          baseWidth={3}
+          targetScale={2}
+          hueShift={0}
+          colorFrequency={1}
+          noise={0.08}
+          glow={0.6}
+        />
+      )}
 
       {/* Bouton retour modernisé */}
       <button

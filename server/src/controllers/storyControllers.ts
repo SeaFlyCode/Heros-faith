@@ -10,7 +10,7 @@ export interface AuthenticatedRequest extends Request {
 // Récupérer toutes les stories
 export async function getAllStories(req: Request, res: Response, next: NextFunction) {
   try {
-    const stories = await Story.find();
+    const stories = await Story.find().populate('author', 'username');
     res.json(stories);
   } catch (err) {
     next(err); // Passe l'erreur au errorHandler
@@ -50,7 +50,7 @@ export async function createStory(req: AuthenticatedRequest, res: Response, next
 export async function getStoryById(req: Request, res: Response, next: NextFunction) {
     try {
         const { storyId } = req.params;
-        const story = await Story.findById(storyId);
+        const story = await Story.findById(storyId).populate('author', 'username');
         if (!story) {
             return res.status(404).json({ message: 'Story not found' });
         }
