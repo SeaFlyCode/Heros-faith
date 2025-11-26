@@ -1,17 +1,23 @@
 import { apiClient } from './client';
 
 export interface Rating {
-  id: number;
-  userId: number;
-  storyId: number;
-  rating: number;
+  _id: string;
+  user_id: string;
+  story_id: string;
+  rating: number; // 1-5
   comment?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt: string;
+}
+
+export interface StoryAverageRating {
+  storyId: string;
+  averageRating: number;
+  totalRatings: number;
 }
 
 export interface CreateRatingRequest {
-  storyId: number;
+  user_id: string;
+  story_id: string;
   rating: number;
   comment?: string;
 }
@@ -42,21 +48,42 @@ export const ratingsApi = {
   /**
    * Récupérer une évaluation par son ID
    */
-  getById: (ratingId: number): Promise<Rating> => {
+  getById: (ratingId: string): Promise<Rating> => {
     return apiClient.get<Rating>(`/ratings/${ratingId}`);
+  },
+
+  /**
+   * Récupérer toutes les évaluations d'une histoire
+   */
+  getByStoryId: (storyId: string): Promise<Rating[]> => {
+    return apiClient.get<Rating[]>(`/ratings/story/${storyId}`);
+  },
+
+  /**
+   * Récupérer la note moyenne d'une histoire
+   */
+  getStoryAverage: (storyId: string): Promise<StoryAverageRating> => {
+    return apiClient.get<StoryAverageRating>(`/ratings/story/${storyId}/average`);
+  },
+
+  /**
+   * Récupérer l'évaluation d'un utilisateur pour une histoire
+   */
+  getUserRatingForStory: (userId: string, storyId: string): Promise<Rating> => {
+    return apiClient.get<Rating>(`/ratings/user/${userId}/story/${storyId}`);
   },
 
   /**
    * Mettre à jour une évaluation
    */
-  update: (ratingId: number, ratingData: UpdateRatingRequest): Promise<Rating> => {
+  update: (ratingId: string, ratingData: UpdateRatingRequest): Promise<Rating> => {
     return apiClient.patch<Rating>(`/ratings/${ratingId}`, ratingData);
   },
 
   /**
    * Supprimer une évaluation
    */
-  delete: (ratingId: number): Promise<void> => {
+  delete: (ratingId: string): Promise<void> => {
     return apiClient.delete<void>(`/ratings/${ratingId}`);
   },
 };
