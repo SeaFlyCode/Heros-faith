@@ -635,10 +635,10 @@ export default function StoryTreeVisualization({
                             title={node.label || "Début"}
                           >
                             <span className="truncate text-center leading-tight">{node.label || "Début"}</span>
-                            {node.isEnd && <span style={{ fontSize: `${8 * zoom}px` }} className="mt-0.5">🏁</span>}
+                            {node.isEnd && <span style={{ fontSize: `${8 * zoom}px` }} className="mt-0.5 text-green-400">FIN</span>}
                           </div>
                           {currentNode?.id === node.id && (
-                            <div className="absolute -top-2 -right-2 animate-bounce" style={{ fontSize: `${12 * zoom}px` }}>📍</div>
+                            <div className="absolute -top-2 -right-2 animate-bounce text-yellow-400 font-bold" style={{ fontSize: `${10 * zoom}px` }}>●</div>
                           )}
                         </div>
                       );
@@ -980,14 +980,14 @@ export default function StoryTreeVisualization({
                                     node.isEnd ? "text-green-200" : "text-white/60"
                                   }`}>
                                     {node.isEnd
-                                      ? "🏁 Fin de l'histoire"
-                                      : `📝 ${node.choices.length} choix disponible${node.choices.length > 1 ? 's' : ''}`}
+                                      ? "Fin de l'histoire"
+                                      : `${node.choices.length} choix disponible${node.choices.length > 1 ? 's' : ''}`}
                                   </p>
                                 </div>
                               </div>
                               {currentNode?.id === node.id && (
-                                <div className="absolute -top-2 -right-2 text-xl animate-bounce">
-                                  📍
+                                <div className="absolute -top-2 -right-2 text-xl animate-bounce text-yellow-400">
+                                  ●
                                 </div>
                               )}
                             </div>
@@ -1026,7 +1026,9 @@ export default function StoryTreeVisualization({
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-white/70 text-lg">🏁</span>
+                  <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
                   <span className="text-white/70">
                     <span className="font-semibold text-white">{nodes.filter(n => n.isEnd).length}</span> fin{nodes.filter(n => n.isEnd).length > 1 ? 's' : ''}
                   </span>
@@ -1052,7 +1054,7 @@ export default function StoryTreeVisualization({
                   <span className="text-white/70 text-sm">Nœud inactif</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-white/70 text-lg">🏁</span>
+                  <div className="w-6 h-6 rounded border-2 border-green-400 bg-green-500/30"></div>
                   <span className="text-white/70 text-sm">
                     Fin de l&apos;histoire
                   </span>

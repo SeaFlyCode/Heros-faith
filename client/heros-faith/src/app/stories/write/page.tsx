@@ -497,8 +497,8 @@ export default function WriteStoryPage() {
       await storiesApi.update(storyId, { status: 'draft' });
       setStoryStatus('draft');
 
-      console.log("✅ Histoire remise en brouillon");
-      alert("📝 Votre histoire a été remise en brouillon.");
+      console.log("Histoire remise en brouillon");
+      alert("Votre histoire a été remise en brouillon.");
     } catch (err) {
       const apiError = err as ApiError;
       console.error("❌ Erreur:", apiError);
@@ -618,7 +618,7 @@ export default function WriteStoryPage() {
             {storyStatus === 'draft' ? (
               <>
                 <span className="px-3 py-1.5 bg-orange-500/20 border border-orange-400/50 text-orange-300 text-sm rounded-full font-semibold flex items-center gap-2">
-                  📝 Brouillon
+                  Brouillon
                 </span>
                 <button
                   onClick={handlePublishStory}
@@ -635,7 +635,7 @@ export default function WriteStoryPage() {
                     </>
                   ) : (
                     <>
-                      ✨ Publier l'histoire
+                      Publier l'histoire
                     </>
                   )}
                 </button>
@@ -650,7 +650,7 @@ export default function WriteStoryPage() {
                   disabled={isPublishing}
                   className="px-4 py-1.5 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-400/50 text-orange-300 text-sm rounded-full font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isPublishing ? "Modification..." : "📝 Repasser en brouillon"}
+                  {isPublishing ? "Modification..." : "Repasser en brouillon"}
                 </button>
               </>
             )}
@@ -665,7 +665,7 @@ export default function WriteStoryPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
-              🗑️ Supprimer
+              Supprimer
             </button>
           </div>
 
