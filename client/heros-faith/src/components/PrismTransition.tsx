@@ -153,7 +153,7 @@ export default function PrismTransition({
       />
       
       {/* Overlay sombre pour améliorer le contraste avec le contenu */}
-      <div className="absolute inset-0 bg-black/60 pointer-events-none z-10" />
+      <div className="absolute inset-0 bg-black/40 pointer-events-none z-10" />
     </div>
   );
 }
