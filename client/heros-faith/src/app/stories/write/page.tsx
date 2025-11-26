@@ -130,12 +130,12 @@ export default function WriteStoryPage() {
                 key={node.id}
                 className={`flex items-center gap-2 p-2 rounded-lg transition-all cursor-pointer ${
                   currentNode.id === node.id
-                    ? "bg-purple-500/30 border border-purple-400/50"
+                    ? "bg-cyan-500/30 border border-cyan-400/50"
                     : "bg-white/5 hover:bg-white/10"
                 }`}
                 onClick={() => setCurrentNode(node)}
               >
-                <div className="w-3 h-3 rounded-full bg-purple-400"></div>
+                <div className="w-3 h-3 rounded-full bg-cyan-400"></div>
                 <span className="text-white text-xs">Nœud {node.id}</span>
                 {node.isEnd && (
                   <span className="ml-auto text-xs text-green-400">Fin</span>
@@ -168,7 +168,7 @@ export default function WriteStoryPage() {
                   onChange={(e) => handleContextChange(e.target.value)}
                   placeholder="Écrivez le contexte de cette partie de l'histoire..."
                   rows={8}
-                  className="w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 hover:bg-white/10 resize-none"
+                  className="w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/50 transition-all duration-300 hover:bg-white/10 resize-none"
                 />
               </div>
 
@@ -186,12 +186,12 @@ export default function WriteStoryPage() {
                         value={choice.text}
                         onChange={(e) => handleChoiceChange(choice.id, e.target.value)}
                         placeholder={`Texte du choix ${index + 1}...`}
-                        className="w-full px-3 py-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 transition-all mb-3"
+                        className="w-full px-3 py-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 transition-all mb-3"
                       />
                       <button
                         type="button"
                         onClick={() => handleDevelopChoice(choice.id)}
-                        className="w-full px-3 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-sm rounded-xl border border-purple-400/30 transition-all"
+                        className="w-full px-3 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-sm rounded-xl border border-cyan-400/30 transition-all"
                       >
                         Développer le choix {index + 1}
                       </button>
@@ -214,7 +214,7 @@ export default function WriteStoryPage() {
                 <button
                   type="button"
                   onClick={handleSave}
-                  className="flex-1 bg-white hover:bg-white/95 text-gray-900 font-bold py-3 rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02]"
+                  className="flex-1 bg-cyan-500/30 hover:bg-cyan-500/40 border border-cyan-400/50 text-white font-bold py-3 rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:shadow-cyan-500/50 hover:scale-[1.02]"
                 >
                   Sauvegarder
                 </button>

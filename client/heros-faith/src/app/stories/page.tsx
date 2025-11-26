@@ -67,12 +67,12 @@ export default function StoriesPage() {
                       e.stopPropagation();
                       handleEditStory(story.id);
                     }}
-                    className="absolute top-4 right-4 bg-white/5 hover:bg-white/10 backdrop-blur-sm p-2.5 rounded-full transition-all duration-200 border border-white/10 hover:border-purple-400/50 group/btn z-10"
+                    className="absolute top-4 right-4 bg-white/5 hover:bg-white/10 backdrop-blur-sm p-2.5 rounded-full transition-all duration-200 border border-white/10 hover:border-cyan-400/50 group/btn z-10"
                     aria-label={`Éditer ${story.title}`}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5 text-white group-hover/btn:text-purple-400 transition-colors"
+                      className="h-5 w-5 text-white group-hover/btn:text-cyan-400 transition-colors"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -87,7 +87,7 @@ export default function StoriesPage() {
                   </button>
 
                   {/* Titre de l'histoire */}
-                  <h2 className="text-2xl font-semibold text-white font-montserrat text-center group-hover:text-purple-300 transition-colors">
+                  <h2 className="text-2xl font-semibold text-white font-montserrat text-center group-hover:text-cyan-400 transition-colors">
                     {story.title}
                   </h2>
                 </div>
@@ -99,9 +99,8 @@ export default function StoriesPage() {
           <div className="flex justify-center">
             <button
               onClick={handleCreateStory}
-              className="group relative w-full max-w-2xl bg-white hover:bg-white/95 text-gray-900 font-bold py-5 rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] overflow-hidden"
+              className="group relative w-full max-w-2xl bg-cyan-500/30 hover:bg-cyan-500/40 border border-cyan-400/50 text-white font-bold py-5 rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:shadow-cyan-500/50 hover:scale-[1.02] active:scale-[0.98]"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 via-pink-400/20 to-purple-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               <div className="relative flex items-center justify-center gap-3">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"

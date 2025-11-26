@@ -41,7 +41,7 @@ export default function NavBar() {
                         Lire une histoire
                     </Link>
                     <Link
-                        href="/contact"
+                        href="/how-it-works"
                         className="inline-block font-medium font-montserrat no-underline hover:text-yellow-400 transition-colors text-white drop-shadow"
                     >
                         Comment ça marche ?
