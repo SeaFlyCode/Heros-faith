@@ -38,7 +38,6 @@ export default function WriteStoryPage() {
     if (pages.length === 0) return pages;
 
     // Trouver la page racine (celle qui n'est la cible d'aucun choix)
-    const pageIds = new Set(pages.map(p => p._id));
     const targetPageIds = new Set<string>();
 
     pages.forEach(page => {
@@ -132,6 +131,8 @@ export default function WriteStoryPage() {
 
         // Trier les pages pour que la page racine (sans parent) soit en premier
         const sortedPages = sortPagesTree(pagesWithChoices);
+        console.log(`📋 Ordre des pages après tri:`, sortedPages.map((p, i) => `${i}: ${p._id.substring(0, 8)}...`));
+        console.log(`🏁 Première page (racine):`, sortedPages[0]?._id);
 
         setPages(sortedPages);
         setCurrentPage(sortedPages[0]);
@@ -401,7 +402,7 @@ export default function WriteStoryPage() {
 
   // Convertir les pages en nœuds pour la visualisation d'arbre
   const convertPagesToNodes = () => {
-    return pages.map((page, index) => {
+    const nodes = pages.map((page, index) => {
       // Trouver le parent de cette page (la page qui a un choix pointant vers celle-ci)
       let parentId: string | undefined;
       let parentChoiceId: string | undefined;
@@ -417,9 +418,10 @@ export default function WriteStoryPage() {
         }
       }
 
-      // Si c'est la première page (pas de parent), on l'appelle "Début"
-      if (!parentId && index === 0) {
+      // Si la page n'a pas de parent, c'est la page racine = "Début"
+      if (!parentId) {
         label = "Début";
+        console.log(`🏁 Page racine trouvée: ${page._id} (index ${index})`);
       }
 
       return {
@@ -436,6 +438,9 @@ export default function WriteStoryPage() {
         parentChoiceId,
       };
     });
+
+    console.log(`🌳 Nœuds générés pour l'arborescence:`, nodes.map(n => ({ id: n.id, label: n.label, parentId: n.parentId })));
+    return nodes;
   };
 
   const handleNodeSelect = (node: { id: string; label?: string; context: string; choices: any[]; isEnd: boolean; parentId?: string; parentChoiceId?: string }) => {
