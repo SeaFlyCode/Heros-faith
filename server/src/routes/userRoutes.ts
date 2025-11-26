@@ -16,7 +16,9 @@ router.post('/login', login);
 router.post('/', createUser);
 router.get('/', roleMiddleware('admin'), getAllUsers);
 router.get('/:userId', authMiddleware, getUserById);
-router.patch('/:userId', authMiddleware, roleMiddleware('admin'), updateUser);
+// Route pour qu'un utilisateur puisse modifier son propre profil
+router.patch('/:userId', authMiddleware, updateUser);
+// Route admin pour modifier n'importe quel utilisateur
 router.delete('/:userId', authMiddleware, roleMiddleware('admin'), deleteUser);
 
 export default router;
