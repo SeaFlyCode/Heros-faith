@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import GlassSurface from "@/components/GlassSurface";
 import Prism from "@/components/Prism";
 import { usersApi, type ApiError } from "@/api";
 
@@ -43,9 +42,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden flex items-center justify-center">
+    <div className="relative min-h-screen w-full overflow-hidden flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Background animé Prism */}
-      <div className="absolute inset-0 w-full h-full z-0 pointer-events-none">
+      <div className="absolute inset-0 w-full h-full z-0 pointer-events-none opacity-40">
         <Prism
           animationType="rotate"
           timeScale={0.5}
@@ -63,76 +62,65 @@ export default function LoginPage() {
       <button
         type="button"
         onClick={() => router.push("/")}
-        className="absolute top-8 left-8 z-20 group flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white font-medium px-5 py-2.5 rounded-full shadow-lg transition-all duration-300 border border-white/20 hover:border-white/40"
+        className="absolute top-6 left-6 z-20 group flex items-center gap-2 bg-white/5 hover:bg-white/10 backdrop-blur-lg text-white font-medium px-4 py-2 rounded-full shadow-lg transition-all duration-300 border border-white/10 hover:border-white/20"
         aria-label="Retour à l'accueil"
       >
         <svg
-          className="w-5 h-5 transition-transform group-hover:-translate-x-1"
+          className="w-4 h-4 transition-transform group-hover:-translate-x-1"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
         </svg>
-        <span className="hidden sm:inline">Retour</span>
+        <span className="text-sm hidden sm:inline">Retour</span>
       </button>
 
       {/* Formulaire centré */}
-      <div className="relative z-10 flex items-center justify-center w-full min-h-screen px-4">
-        <GlassSurface
-          borderRadius={32}
-          blur={20}
-          opacity={0.95}
-          brightness={35}
-          borderWidth={0.15}
-          backgroundOpacity={0.3}
-          mixBlendMode="screen"
-          className="w-full max-w-md shadow-2xl overflow-hidden animate-fade-in"
-        >
-          <div className="p-8 sm:p-10">
+      <div className="relative z-10 w-full max-w-md px-4 py-8">
+        <div className="bg-white/5 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/10 overflow-hidden animate-fade-in">
+          <div className="p-8 sm:p-12">
             {/* Header */}
-            <div className="text-center mb-8">
-              <div className="inline-block p-3 bg-gradient-to-br from-yellow-400/20 to-red-400/20 rounded-2xl mb-4">
-                <svg
-                  className="w-8 h-8 text-yellow-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <h1 className="text-3xl font-bold text-white mb-2">Bon retour !</h1>
-              <p className="text-white/70 text-sm">Connectez-vous pour continuer votre aventure</p>
+            <div className="text-center mb-10">
+              <h1 className="text-4xl sm:text-5xl font-bold text-white mb-3 tracking-tight">
+                Bon retour !
+              </h1>
+              <p className="text-white/60 text-base">
+                Connectez-vous pour continuer votre aventure
+              </p>
             </div>
 
             {/* Formulaire */}
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-6">
               {/* Message d'erreur */}
               {error && (
-                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 flex items-start gap-3 animate-shake">
+                <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-start gap-3 animate-shake">
                   <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                   </svg>
-                  <span className="text-red-200 text-sm">{error}</span>
+                  <span className="text-red-200 text-sm font-medium">{error}</span>
                 </div>
               )}
 
               {/* Email */}
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-semibold text-white/90 flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                  </svg>
-                  Email
-                </label>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                    </svg>
+                  </div>
+                  <label htmlFor="email" className="text-lg font-semibold text-white">
+                    Email
+                  </label>
+                </div>
                 <input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="exemple@email.com"
-                  className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-yellow-400/50 transition-all duration-300"
+                  className="w-full px-5 py-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl text-white text-base placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 hover:bg-white/10"
                   autoComplete="email"
                   disabled={isLoading}
                   required
@@ -140,13 +128,17 @@ export default function LoginPage() {
               </div>
 
               {/* Mot de passe */}
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-semibold text-white/90 flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                  Mot de passe
-                </label>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                  <label htmlFor="password" className="text-lg font-semibold text-white">
+                    Mot de passe
+                  </label>
+                </div>
                 <div className="relative">
                   <input
                     id="password"
@@ -154,7 +146,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-yellow-400/50 transition-all duration-300 pr-12"
+                    className="w-full px-5 py-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl text-white text-base placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 pr-14 hover:bg-white/10"
                     autoComplete="current-password"
                     disabled={isLoading}
                     required
@@ -162,8 +154,9 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white/90 transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/90 transition-colors p-1"
                     tabIndex={-1}
+                    aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
                   >
                     {showPassword ? (
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -180,11 +173,11 @@ export default function LoginPage() {
               </div>
 
               {/* Mot de passe oublié */}
-              <div className="flex justify-end">
+              <div className="flex justify-center">
                 <button
                   type="button"
                   onClick={() => router.push("/forgot-password")}
-                  className="text-sm text-yellow-400 hover:text-yellow-300 transition-colors font-medium"
+                  className="text-sm text-white/60 hover:text-white transition-colors font-medium underline decoration-dotted underline-offset-4"
                 >
                   Mot de passe oublié ?
                 </button>
@@ -194,34 +187,39 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-neutral-900 font-bold py-3.5 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+                className="group relative w-full bg-white hover:bg-white/95 text-gray-900 font-bold py-5 rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 overflow-hidden"
               >
-                {isLoading ? (
-                  <>
-                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Connexion en cours...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Se connecter</span>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                    </svg>
-                  </>
-                )}
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 via-pink-400/20 to-purple-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="relative flex items-center justify-center gap-3">
+                  {isLoading ? (
+                    <>
+                      <svg className="animate-spin h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span className="text-lg">Connexion en cours...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-lg">Se connecter</span>
+                      <svg className="w-6 h-6 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </>
+                  )}
+                </div>
               </button>
             </form>
 
             {/* Séparateur */}
-            <div className="relative my-6">
+            <div className="relative my-8">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/20"></div>
+                <div className="w-full border-t border-white/10"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-transparent text-white/60">Nouveau sur la plateforme ?</span>
+                <span className="px-4 bg-transparent text-white/50 text-base">
+                  Nouveau sur la plateforme ?
+                </span>
               </div>
             </div>
 
@@ -229,15 +227,17 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => router.push("/register")}
-              className="w-full bg-white/5 hover:bg-white/10 backdrop-blur-sm border border-white/20 hover:border-white/40 text-white font-semibold py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2"
+              className="group w-full bg-white/5 hover:bg-white/10 backdrop-blur-sm border border-white/10 hover:border-white/20 text-white font-semibold py-5 rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-              </svg>
-              <span>Créer un compte</span>
+              <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+              <span className="text-lg">Créer un compte</span>
             </button>
           </div>
-        </GlassSurface>
+        </div>
       </div>
 
       {/* Styles CSS pour les animations */}
@@ -245,7 +245,7 @@ export default function LoginPage() {
         @keyframes fade-in {
           from {
             opacity: 0;
-            transform: translateY(20px);
+            transform: translateY(30px);
           }
           to {
             opacity: 1;
@@ -255,16 +255,16 @@ export default function LoginPage() {
 
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-5px); }
-          75% { transform: translateX(5px); }
+          25% { transform: translateX(-8px); }
+          75% { transform: translateX(8px); }
         }
 
         .animate-fade-in {
-          animation: fade-in 0.6s ease-out;
+          animation: fade-in 0.7s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .animate-shake {
-          animation: shake 0.3s ease-in-out;
+          animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
         }
       `}</style>
     </div>
