@@ -5,37 +5,60 @@ import { useRouter } from "next/navigation";
 import Prism from "@/components/Prism";
 import { usersApi, type ApiError } from "@/api";
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
-    if (!email || !password) {
+    // Validations
+    if (!email || !username || !password || !confirmPassword) {
       setError("Veuillez remplir tous les champs.");
       setIsLoading(false);
       return;
     }
 
-    try {
-      const data = await usersApi.login({ email, password });
+    if (password !== confirmPassword) {
+      setError("Les mots de passe ne correspondent pas.");
+      setIsLoading(false);
+      return;
+    }
 
-      // Stocker le token
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
+    if (password.length < 6) {
+      setError("Le mot de passe doit contenir au moins 6 caractères.");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      await usersApi.create({
+        email,
+        username,
+        password,
+        role: 'user'
+      });
+
+      // Connexion automatique après inscription
+      const loginData = await usersApi.login({ email, password });
+
+      localStorage.setItem("token", loginData.token);
+      localStorage.setItem("user", JSON.stringify(loginData.user));
 
       // Redirection
       router.push("/dashboard");
     } catch (err) {
       const apiError = err as ApiError;
-      setError(apiError.message || "Erreur lors de la connexion");
+      setError(apiError.message || "Erreur lors de l'inscription");
     } finally {
       setIsLoading(false);
     }
@@ -60,7 +83,7 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-black/60 pointer-events-none z-10" />
       </div>
 
-      {/* Bouton retour modernisé */}
+      {/* Bouton retour */}
       <button
         type="button"
         onClick={() => router.push("/")}
@@ -85,10 +108,10 @@ export default function LoginPage() {
             {/* Header */}
             <div className="text-center mb-10">
               <h1 className="text-4xl sm:text-5xl font-bold text-white mb-3 tracking-tight">
-                Bon retour !
+                Inscription
               </h1>
               <p className="text-white/60 text-base">
-                Connectez-vous pour continuer votre aventure
+                Créez votre compte pour débuter votre aventure
               </p>
             </div>
 
@@ -104,43 +127,49 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {/* Email */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                    </svg>
-                  </div>
-                  <label htmlFor="email" className="text-lg font-semibold text-white">
-                    Email
-                  </label>
-                </div>
+              {/* Adresse e-mail */}
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-sm font-medium text-white/80 pl-1">
+                  Adresse e-mail
+                </label>
                 <input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="exemple@email.com"
-                  className="w-full px-5 py-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl text-white text-base placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 hover:bg-white/10"
+                  className="w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white text-base placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 hover:bg-white/10"
                   autoComplete="email"
                   disabled={isLoading}
                   required
                 />
               </div>
 
+              {/* Nom */}
+              <div className="space-y-2">
+                <label htmlFor="username" className="text-sm font-medium text-white/80 pl-1">
+                  Nom
+                </label>
+                <input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Votre nom d'utilisateur"
+                  className="w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white text-base placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 hover:bg-white/10"
+                  autoComplete="username"
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+
+              {/* Prénom - optionnel selon le wireframe, j'utilise juste username */}
+
               {/* Mot de passe */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                  </div>
-                  <label htmlFor="password" className="text-lg font-semibold text-white">
-                    Mot de passe
-                  </label>
-                </div>
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-sm font-medium text-white/80 pl-1">
+                  Mot de passe
+                </label>
                 <div className="relative">
                   <input
                     id="password"
@@ -148,15 +177,15 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full px-5 py-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl text-white text-base placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 pr-14 hover:bg-white/10"
-                    autoComplete="current-password"
+                    className="w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white text-base placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 pr-12 hover:bg-white/10"
+                    autoComplete="new-password"
                     disabled={isLoading}
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/90 transition-colors p-1"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/90 transition-colors p-1"
                     tabIndex={-1}
                     aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
                   >
@@ -174,43 +203,66 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Mot de passe oublié */}
-              <div className="flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => router.push("/forgot-password")}
-                  className="text-sm text-white/60 hover:text-white transition-colors font-medium underline decoration-dotted underline-offset-4"
-                >
-                  Mot de passe oublié ?
-                </button>
+              {/* Confirmer mot de passe */}
+              <div className="space-y-2">
+                <label htmlFor="confirmPassword" className="text-sm font-medium text-white/80 pl-1">
+                  Confirmer mot de passe
+                </label>
+                <div className="relative">
+                  <input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white text-base placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 pr-12 hover:bg-white/10"
+                    autoComplete="new-password"
+                    disabled={isLoading}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/90 transition-colors p-1"
+                    tabIndex={-1}
+                    aria-label={showConfirmPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                  >
+                    {showConfirmPassword ? (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
 
-              {/* Bouton de connexion */}
+              {/* Bouton d'inscription */}
               <button
                 type="submit"
                 disabled={isLoading}
-                className="group relative w-full bg-white hover:bg-white/95 text-gray-900 font-bold py-5 rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 overflow-hidden"
+                className="group relative w-full bg-white hover:bg-white/95 text-gray-900 font-bold py-4 rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 overflow-hidden mt-6"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 via-pink-400/20 to-purple-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 <div className="relative flex items-center justify-center gap-3">
                   {isLoading ? (
                     <>
-                      <svg className="animate-spin h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      <span className="text-lg">Connexion en cours...</span>
+                      <span className="text-base">Inscription en cours...</span>
                     </>
                   ) : (
-                    <>
-                      <span className="text-lg">Se connecter</span>
-                      <svg className="w-6 h-6 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                      </svg>
-                    </>
+                    <span className="text-base">S&apos;inscrire</span>
                   )}
                 </div>
               </button>
+
             </form>
 
             {/* Séparateur */}
@@ -220,18 +272,18 @@ export default function LoginPage() {
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="px-4 bg-transparent text-white/50 text-base">
-                  Nouveau sur la plateforme ?
+                  Vous avez déjà un compte ?
                 </span>
               </div>
             </div>
 
-            {/* Lien inscription */}
+            {/* Lien connexion */}
             <button
               type="button"
-              onClick={() => router.push("/register")}
+              onClick={() => router.push("/login")}
               className="group w-full bg-white/5 hover:bg-white/10 backdrop-blur-sm border border-white/10 hover:border-white/20 text-white font-semibold py-5 rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl"
             >
-              <span className="text-lg">Créer un compte</span>
+              <span className="text-lg">Se connecter</span>
               <svg className="w-6 h-6 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
@@ -270,3 +322,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
