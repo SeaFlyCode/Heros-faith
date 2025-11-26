@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Prism from "@/components/Prism";
 import { usersApi, type ApiError } from "@/api";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login: authLogin } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -36,13 +38,12 @@ export default function LoginPage() {
       const data = await usersApi.login({ email, password });
       console.log('✅ Connexion réussie:', { token: data.token.substring(0, 20) + '...', user: data.user });
 
-      // Stocker le token
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      // Utiliser le hook d'authentification
+      authLogin(data.token, data.user);
 
-      console.log('➡️ Redirection vers /dashboard');
-      // Redirection
-      router.push("/dashboard");
+      console.log('➡️ Redirection vers /');
+      // Redirection vers la page d'accueil
+      router.push("/");
     } catch (err) {
       const apiError = err as ApiError;
       console.error('❌ Erreur lors de la connexion:', apiError);
