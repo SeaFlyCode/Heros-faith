@@ -1,27 +1,28 @@
 import { apiClient } from './client';
 
 export interface Choice {
-  id: number;
-  noeudId: number;
+  _id: string;
+  page_id: string;
   text: string;
-  targetNoeudId: number;
-  createdAt?: string;
-  updatedAt?: string;
+  target_page_id: string;
+  condition?: string;
 }
 
 export interface CreateChoiceRequest {
-  noeudId: number;
+  page_id: string;
   text: string;
-  targetNoeudId: number;
+  target_page_id: string;
+  condition?: string;
 }
 
 export interface UpdateChoiceRequest {
   text?: string;
-  targetNoeudId?: number;
+  target_page_id?: string;
+  condition?: string;
 }
 
 /**
- * API pour la gestion des choix (liens entre noeuds)
+ * API pour la gestion des choix (liens entre pages)
  */
 export const choicesApi = {
   /**
@@ -41,21 +42,28 @@ export const choicesApi = {
   /**
    * Récupérer un choix par son ID
    */
-  getById: (choiceId: number): Promise<Choice> => {
+  getById: (choiceId: string): Promise<Choice> => {
     return apiClient.get<Choice>(`/choices/${choiceId}`);
+  },
+
+  /**
+   * Récupérer tous les choix d'une page
+   */
+  getByPageId: (pageId: string): Promise<Choice[]> => {
+    return apiClient.get<Choice[]>(`/pages/${pageId}/choices`);
   },
 
   /**
    * Mettre à jour un choix
    */
-  update: (choiceId: number, choiceData: UpdateChoiceRequest): Promise<Choice> => {
+  update: (choiceId: string, choiceData: UpdateChoiceRequest): Promise<Choice> => {
     return apiClient.patch<Choice>(`/choices/${choiceId}`, choiceData);
   },
 
   /**
-   * Supprimer un choix (admin uniquement)
+   * Supprimer un choix
    */
-  delete: (choiceId: number): Promise<void> => {
+  delete: (choiceId: string): Promise<void> => {
     return apiClient.delete<void>(`/choices/${choiceId}`);
   },
 };
