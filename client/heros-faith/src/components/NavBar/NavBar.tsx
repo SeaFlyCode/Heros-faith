@@ -30,14 +30,16 @@ export default function NavBar() {
                 >
                     {"Hero's Faith"}
                 </Link>
-                {/* Menu Desktop (toujours affiché) */}
+                {/* Menu Desktop */}
                 <div className="flex gap-x-4">
-                    <Link
-                        href="/stories"
-                        className="inline-block font-medium font-montserrat no-underline hover:text-yellow-400 transition-colors text-white drop-shadow"
-                    >
-                        Mes histoires
-                    </Link>
+                    {isAuthenticated && (
+                        <Link
+                            href="/stories"
+                            className="inline-block font-medium font-montserrat no-underline hover:text-yellow-400 transition-colors text-white drop-shadow"
+                        >
+                            Mes histoires
+                        </Link>
+                    )}
                     <Link
                         href="/read"
                         className="inline-block font-medium font-montserrat no-underline hover:text-yellow-400 transition-colors text-white drop-shadow"
