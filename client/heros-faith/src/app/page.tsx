@@ -9,7 +9,7 @@ export default function Home() {
           timeScale={0.5}
           height={3.5}
           baseWidth={5.5}
-          scale={3.6}
+          scale={2.5}
           hueShift={0}
           colorFrequency={1}
           noise={0.08}

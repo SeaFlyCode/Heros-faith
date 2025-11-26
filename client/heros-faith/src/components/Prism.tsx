@@ -81,8 +81,7 @@ const Prism: React.FC<PrismProps> = ({
       inset: '0',
       width: '100%',
       height: '100%',
-      display: 'block',
-      transition: 'all 1s ease-out'
+      display: 'block'
     } as Partial<CSSStyleDeclaration>);
     container.appendChild(gl.canvas);
 
