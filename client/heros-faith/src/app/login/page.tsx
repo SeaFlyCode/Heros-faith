@@ -18,23 +18,34 @@ export default function LoginPage() {
     setError("");
     setIsLoading(true);
 
+    console.log('🔐 Début de la connexion...');
+    console.log('Données du formulaire:', { email, hasPassword: !!password });
+
     if (!email || !password) {
+      const missing = [];
+      if (!email) missing.push('email');
+      if (!password) missing.push('password');
+      console.log('❌ Champs manquants:', missing);
       setError("Veuillez remplir tous les champs.");
       setIsLoading(false);
       return;
     }
 
     try {
+      console.log('📤 Envoi de la requête de connexion pour:', email);
       const data = await usersApi.login({ email, password });
+      console.log('✅ Connexion réussie:', { token: data.token.substring(0, 20) + '...', user: data.user });
 
       // Stocker le token
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
+      console.log('➡️ Redirection vers /dashboard');
       // Redirection
       router.push("/dashboard");
     } catch (err) {
       const apiError = err as ApiError;
+      console.error('❌ Erreur lors de la connexion:', apiError);
       setError(apiError.message || "Erreur lors de la connexion");
     } finally {
       setIsLoading(false);
