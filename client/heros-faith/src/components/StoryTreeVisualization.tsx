@@ -150,11 +150,11 @@ export default function StoryTreeVisualization({
     // Calculer la profondeur maximale de l'arbre
     const maxDepth = Math.max(...nodesToProcess.map(n => getDepth(n.id)), 0);
 
-    // Espacement vertical adaptatif basé sur la profondeur - COMPACT
+    // Espacement vertical adaptatif basé sur la profondeur
     const getVerticalSpacing = () => {
       if (maxNodes) {
-        // Vue minimaliste : espacement très compact (8-12% par niveau)
-        return Math.max(8, Math.min(12, 80 / (maxDepth + 1)));
+        // Vue minimaliste : espacement en % de la hauteur (25% par niveau)
+        return Math.max(20, Math.min(30, 80 / (maxDepth + 1)));
       }
       // Vue complète : espacement compact (80-100px par niveau)
       return Math.max(80, Math.min(100, 400 / (maxDepth + 1)));
@@ -195,8 +195,8 @@ export default function StoryTreeVisualization({
         const childrenInLevel = children.filter(c => levelNodes.includes(c));
 
         childrenInLevel.forEach((child, idx) => {
-          // Espacement horizontal COMPACT entre frères
-          const spreadFactor = Math.max(8, Math.min(20, 60 / childrenInLevel.length));
+          // Espacement horizontal entre frères
+          const spreadFactor = Math.max(15, Math.min(25, 80 / childrenInLevel.length));
           const baseX = preferredX !== undefined ? preferredX : 50;
           const offset = (idx - (childrenInLevel.length - 1) / 2) * spreadFactor;
           const childX = positionNode(child.id, Math.max(10, Math.min(90, baseX + offset)));
@@ -215,10 +215,10 @@ export default function StoryTreeVisualization({
       // Assurer que x reste dans les limites
       x = Math.max(10, Math.min(90, x));
 
-      // Calculer y en pixels pour la vue complète, en pourcentage pour la vue mini
+      // Calculer y : pour la mini vue, on commence à 15% et on espace de verticalSpacing%
       const y = maxNodes
-        ? depth * verticalSpacing + 5  // Pourcentage pour mini vue - marge réduite
-        : depth * verticalSpacing + 30; // Pixels pour vue complète - marge réduite
+        ? 15 + depth * verticalSpacing  // Commence à 15% du haut
+        : depth * verticalSpacing + 30; // Pixels pour vue complète
 
       positions.set(nodeId, { x, y });
       positionedNodes.add(nodeId);
@@ -299,15 +299,22 @@ export default function StoryTreeVisualization({
                 // Calculer les positions pour TOUS les nœuds
                 const positions = calculatePositions();
 
-                // Calculer la taille nécessaire du conteneur en pixels - COMPACT
-                let maxY = 0;
-                positions.forEach(pos => {
-                  maxY = Math.max(maxY, pos.y);
+                // Calculer la profondeur max pour dimensionner le conteneur
+                let maxDepth = 0;
+                nodesToShow.forEach(node => {
+                  let depth = 0;
+                  let current = node;
+                  while (current.parentId) {
+                    depth++;
+                    current = nodesToShow.find(n => n.id === current.parentId) || current;
+                    if (!current.parentId) break;
+                  }
+                  maxDepth = Math.max(maxDepth, depth);
                 });
 
-                // Hauteur du conteneur réduite pour être plus compact
-                // Conversion: maxY est en %, on le multiplie par un facteur réduit
-                const containerHeight = Math.max(250, (maxY / 100) * 400 + 60);
+                // Hauteur fixe par niveau (50px) + marge
+                const levelHeight = 70;
+                const containerHeight = Math.max(260, (maxDepth + 1) * levelHeight + 40);
 
                 return (
                   <div className="relative w-full" style={{ minHeight: `${containerHeight}px` }}>
@@ -324,13 +331,12 @@ export default function StoryTreeVisualization({
 
                         if (!parentPos || !childPos) return null;
 
-                        // Convertir les positions en pixels pour le SVG
+                        // Convertir les positions Y en pixels (Y est en %)
                         const y1 = (parentPos.y / 100) * containerHeight;
                         const y2 = (childPos.y / 100) * containerHeight;
 
                         return (
                           <g key={`line-${node.id}`}>
-                            {/* Ligne d'ombre fine */}
                             <line
                               x1={`${parentPos.x}%`}
                               y1={y1}
@@ -339,7 +345,6 @@ export default function StoryTreeVisualization({
                               stroke="rgba(0, 0, 0, 0.3)"
                               strokeWidth="2"
                             />
-                            {/* Ligne principale fine */}
                             <line
                               x1={`${parentPos.x}%`}
                               y1={y1}
@@ -356,58 +361,45 @@ export default function StoryTreeVisualization({
                     </svg>
 
                     {/* Nœuds */}
-                    {nodesToShow.map((node, idx) => {
+                    {nodesToShow.map((node) => {
                       const pos = positions.get(node.id);
-                      if (!pos) {
-                        console.warn(`⚠️ Pas de position pour le nœud: ${node.label} (${node.id})`);
-                        return null;
-                      }
+                      if (!pos) return null;
 
-                      // Log pour le débogage - seulement pour la première fois
-                      if (idx === 0) {
-                        console.log(`📍 Positions des nœuds:`, nodesToShow.map(n => {
-                          const p = positions.get(n.id);
-                          return { label: n.label, x: p?.x, y: p?.y };
-                        }));
-                      }
+                      // Y en pixels
+                      const yPx = (pos.y / 100) * containerHeight;
 
                       return (
                         <div
                           key={node.id}
                           data-node-id={node.id}
-                          className="absolute cursor-pointer transition-all duration-200 hover:scale-105"
+                          className="absolute cursor-pointer transition-all duration-200 hover:scale-110"
                           style={{
                             left: `${pos.x}%`,
-                            top: `${pos.y}%`,
+                            top: `${yPx}px`,
                             transform: "translate(-50%, -50%)",
                             zIndex: 10,
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            console.log(`🖱️ Clic sur nœud: ${node.label} (${node.id})`);
                             onNodeSelect(node);
                           }}
                         >
                           <div
-                            className={`px-2 py-1.5 rounded-md flex flex-col items-center justify-center text-[11px] font-semibold transition-all shadow-md ${
+                            className={`px-2 py-1 rounded flex flex-col items-center justify-center text-[10px] font-semibold transition-all shadow-sm ${
                               currentNode?.id === node.id
-                                ? "bg-gradient-to-br from-cyan-500/50 to-blue-500/50 border-2 border-yellow-400 text-white shadow-lg shadow-cyan-500/40 scale-105 ring-1 ring-yellow-400/50"
+                                ? "bg-gradient-to-br from-cyan-500/50 to-blue-500/50 border-2 border-yellow-400 text-white shadow-md shadow-cyan-500/40 ring-1 ring-yellow-400/50"
                                 : node.isEnd
-                                ? "bg-gradient-to-br from-green-500/30 to-emerald-500/30 border border-green-400/50 text-green-100 hover:from-green-500/40 hover:to-emerald-500/40"
-                                : "bg-gradient-to-br from-white/10 to-white/5 border border-cyan-400/40 text-cyan-100 hover:from-cyan-500/30 hover:to-blue-500/30 hover:border-cyan-300"
+                                ? "bg-gradient-to-br from-green-500/30 to-emerald-500/30 border border-green-400/50 text-green-100"
+                                : "bg-gradient-to-br from-white/10 to-white/5 border border-cyan-400/40 text-cyan-100 hover:from-cyan-500/30 hover:to-blue-500/30"
                             }`}
-                            style={{ minWidth: "55px", minHeight: "32px", maxWidth: "110px" }}
+                            style={{ minWidth: "50px", minHeight: "26px", maxWidth: "90px" }}
                             title={node.label || "Début"}
                           >
                             <span className="truncate text-center leading-tight">{node.label || "Début"}</span>
-                            {node.isEnd && (
-                              <span className="text-[9px] text-green-300 mt-0.5">🏁</span>
-                            )}
+                            {node.isEnd && <span className="text-[8px] text-green-300">🏁</span>}
                           </div>
                           {currentNode?.id === node.id && (
-                            <div className="absolute -top-1 -right-1 text-sm animate-bounce">
-                              📍
-                            </div>
+                            <div className="absolute -top-1 -right-1 text-[10px] animate-bounce">📍</div>
                           )}
                         </div>
                       );
