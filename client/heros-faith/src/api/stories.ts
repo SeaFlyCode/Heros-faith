@@ -1,13 +1,27 @@
 import { apiClient } from './client';
 
+// Interface pour l'auteur (populé depuis le backend)
+export interface StoryAuthor {
+  _id: string;
+  username: string;
+}
+
 export interface Story {
   _id: string;
   title: string;
   description?: string;
-  author: string;
+  author: StoryAuthor | string; // Peut être un objet (populé) ou un ID string
   status: 'draft' | 'published';
   createdAt?: string;
   updatedAt?: string;
+}
+
+// Helper pour récupérer le nom d'affichage de l'auteur
+export function getAuthorDisplayName(author: StoryAuthor | string): string {
+  if (typeof author === 'string') {
+    return author;
+  }
+  return author.username;
 }
 
 export interface CreateStoryRequest {
