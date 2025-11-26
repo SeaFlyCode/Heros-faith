@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Prism from "@/components/Prism";
+import PrismTransition from "@/components/PrismTransition";
 
 interface Story {
   id: number;
@@ -32,22 +32,18 @@ export default function StoriesPage() {
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-black">
-      {/* Background animé Prism */}
-      <div className="absolute inset-0 w-full h-full z-0 pointer-events-none">
-        <Prism
-          animationType="rotate"
-          timeScale={0.5}
-          height={3.5}
-          baseWidth={5.5}
-          scale={3.6}
-          hueShift={0}
-          colorFrequency={1}
-          noise={0.08}
-          glow={0.8}
-        />
-        {/* Overlay noir pour renforcer le fond noir */}
-        <div className="absolute inset-0 bg-black/60 pointer-events-none z-10" />
-      </div>
+      {/* Background animé Prism avec transition */}
+      <PrismTransition
+        animationType="rotate"
+        timeScale={0.5}
+        height={2}
+        baseWidth={3}
+        targetScale={2}
+        hueShift={0}
+        colorFrequency={1}
+        noise={0.08}
+        glow={0.8}
+      />
 
       {/* Contenu principal */}
       <main className="relative z-20 min-h-screen pt-32 pb-16 px-8">

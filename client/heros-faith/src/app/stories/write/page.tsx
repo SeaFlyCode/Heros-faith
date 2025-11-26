@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Prism from "@/components/Prism";
+import PrismTransition from "@/components/PrismTransition";
 
 interface StoryNode {
   id: string;
@@ -19,11 +19,6 @@ interface Choice {
 
 export default function WriteStoryPage() {
   const router = useRouter();
-  // Démarrer avec les mêmes valeurs que la page d'accueil
-  const [prismScale, setPrismScale] = useState(3.6);
-  const [prismHeight, setPrismHeight] = useState(3.5);
-  const [prismBaseWidth, setPrismBaseWidth] = useState(5.5);
-  const [isZoomed, setIsZoomed] = useState(false);
 
   const [currentNode, setCurrentNode] = useState<StoryNode>({
     id: "1",
@@ -35,17 +30,6 @@ export default function WriteStoryPage() {
     isEnd: false,
   });
 
-  useEffect(() => {
-    // Démarrer l'animation de zoom après un court délai
-    const timer = setTimeout(() => {
-      setIsZoomed(true);
-      setPrismScale(1.2);
-      setPrismHeight(2);
-      setPrismBaseWidth(3);
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   const [nodes, setNodes] = useState<StoryNode[]>([
     {
@@ -104,27 +88,18 @@ export default function WriteStoryPage() {
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-black">
-      {/* Background animé Prism */}
-      <div
-        className="absolute inset-0 w-full h-full z-0 pointer-events-none transition-all duration-1000 ease-out"
-        style={{
-          transform: isZoomed ? 'scale(0.33)' : 'scale(1)',
-          transformOrigin: 'center center'
-        }}
-      >
-        <Prism
-          animationType="rotate"
-          timeScale={0.5}
-          height={prismHeight}
-          baseWidth={prismBaseWidth}
-          scale={prismScale}
-          hueShift={0}
-          colorFrequency={1}
-          noise={0.08}
-          glow={0.8}
-        />
-        <div className="absolute inset-0 bg-black/60 pointer-events-none z-10" />
-      </div>
+      {/* Background animé Prism avec transition */}
+      <PrismTransition
+        animationType="rotate"
+        timeScale={0.5}
+        height={2}
+        baseWidth={3}
+        targetScale={2}
+        hueShift={0}
+        colorFrequency={1}
+        noise={0.08}
+        glow={0.8}
+      />
 
       {/* Bouton retour */}
       <button
