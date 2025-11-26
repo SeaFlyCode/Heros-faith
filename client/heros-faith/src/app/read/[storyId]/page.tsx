@@ -6,14 +6,14 @@ import PrismTransition from "@/components/PrismTransition";
 import { 
   storiesApi, 
   storyPagesApi, 
-  choicesApi,
+  storyChoicesApi,
   partiesApi,
   ratingsApi,
   getAuthorDisplayName,
   type Story, 
   type StoryPage,
-  type Choice,
-  type ApiError 
+  type StoryChoice,
+  type ApiError
 } from "@/api";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -144,7 +144,7 @@ export default function ReadStoryPage() {
   const [story, setStory] = useState<Story | null>(null);
   const [pages, setPages] = useState<StoryPage[]>([]);
   const [currentPage, setCurrentPage] = useState<StoryPage | null>(null);
-  const [choices, setChoices] = useState<Choice[]>([]);
+  const [choices, setChoices] = useState<StoryChoice[]>([]);
   const [pageHistory, setPageHistory] = useState<string[]>([]);
   const [partyId, setPartyId] = useState<string | null>(null);
   const partyIdRef = useRef<string | null>(null);
@@ -217,10 +217,14 @@ export default function ReadStoryPage() {
 
       // Trouver la première page (celle qui n'est la cible d'aucun choix = page de départ)
       if (pagesData.length > 0) {
-        const firstPage = findFirstPage(pagesData);
+        const firstPage = await findFirstPage(pagesData);
         if (firstPage) {
           await navigateToPage(firstPage._id, pagesData);
+        } else {
+          setError("Aucune page de départ trouvée pour cette histoire");
         }
+      } else {
+        setError("Cette histoire n'a pas encore de pages");
       }
 
       setError("");
@@ -234,10 +238,41 @@ export default function ReadStoryPage() {
   };
 
   // Trouver la première page (celle qui n'est ciblée par aucun choix)
-  const findFirstPage = (pagesData: StoryPage[]): StoryPage | null => {
-    // Pour l'instant, on prend simplement la première page
-    // Une meilleure logique serait de charger tous les choix et trouver la page non ciblée
-    return pagesData[0] || null;
+  const findFirstPage = async (pagesData: StoryPage[]): Promise<StoryPage | null> => {
+    if (pagesData.length === 0) return null;
+
+    try {
+      // Charger tous les choix pour toutes les pages
+      const allChoicesPromises = pagesData.map(page =>
+        storyChoicesApi.getByPageId(page._id).catch(() => [])
+      );
+      const allChoicesArrays = await Promise.all(allChoicesPromises);
+      const allChoices = allChoicesArrays.flat();
+
+      console.log(`📋 Total de choix dans l'histoire: ${allChoices.length}`);
+
+      // Trouver les IDs de toutes les pages ciblées
+      const targetedPageIds = new Set(
+        allChoices
+          .map(choice => choice.target_page_id)
+          .filter(id => id) // Filtrer les undefined/null
+      );
+
+      // La première page est celle qui n'est ciblée par aucun choix
+      const firstPage = pagesData.find(page => !targetedPageIds.has(page._id));
+
+      if (firstPage) {
+        console.log(`🏁 Page racine trouvée: ${firstPage._id}`);
+        return firstPage;
+      }
+
+      // Fallback: si aucune page racine n'est trouvée, prendre la première
+      console.warn("⚠️ Aucune page racine trouvée, utilisation de la première page");
+      return pagesData[0];
+    } catch (err) {
+      console.error("❌ Erreur lors de la recherche de la première page:", err);
+      return pagesData[0];
+    }
   };
 
   // Naviguer vers une page
@@ -261,7 +296,8 @@ export default function ReadStoryPage() {
 
       // Charger les choix de cette page
       if (!page.is_ending) {
-        const pageChoices = await choicesApi.getByPageId(pageId);
+        const pageChoices = await storyChoicesApi.getByPageId(pageId);
+        console.log(`📋 Choix chargés pour la page ${pageId}:`, pageChoices.length);
         setChoices(pageChoices);
       } else {
         setChoices([]);
@@ -321,9 +357,14 @@ export default function ReadStoryPage() {
   };
 
   // Gérer le choix d'une option
-  const handleChoice = (choice: Choice) => {
+  const handleChoice = (choice: StoryChoice) => {
     console.log("🎯 Choix sélectionné:", choice.text);
-    navigateToPage(choice.target_page_id);
+    if (choice.target_page_id) {
+      navigateToPage(choice.target_page_id);
+    } else {
+      console.error("❌ Ce choix n'a pas de page cible");
+      setError("Ce choix n'est pas encore développé");
+    }
   };
 
   // Revenir à la page précédente
@@ -338,10 +379,10 @@ export default function ReadStoryPage() {
   };
 
   // Recommencer l'histoire
-  const handleRestart = () => {
+  const handleRestart = async () => {
     setPageHistory([]);
     if (pages.length > 0) {
-      const firstPage = findFirstPage(pages);
+      const firstPage = await findFirstPage(pages);
       if (firstPage) {
         navigateToPage(firstPage._id);
       }
