@@ -32,13 +32,90 @@ export default function StoryTreeVisualization({
 }: StoryTreeVisualizationProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [zoom, setZoom] = useState(1); // Niveau de zoom (0.5 à 2)
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
   const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
   const miniContainerRef = useRef<HTMLDivElement>(null);
 
+  // Fonctions de zoom
+  const zoomIn = () => setZoom(prev => Math.min(prev + 0.2, 2));
+  const zoomOut = () => setZoom(prev => Math.max(prev - 0.2, 0.4));
+  const resetZoom = () => setZoom(1);
+
+  // Gestion du drag pour naviguer
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const container = miniContainerRef.current;
+    if (!container) return;
+    
+    // Ne pas démarrer le drag si on clique sur un nœud
+    if ((e.target as HTMLElement).closest('[data-node-id]')) return;
+    
+    setIsDragging(true);
+    setDragStart({
+      x: e.clientX,
+      y: e.clientY,
+      scrollLeft: container.scrollLeft,
+      scrollTop: container.scrollTop
+    });
+    container.style.cursor = 'grabbing';
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+    const container = miniContainerRef.current;
+    if (!container) return;
+
+    e.preventDefault();
+    const deltaX = e.clientX - dragStart.x;
+    const deltaY = e.clientY - dragStart.y;
+    
+    container.scrollLeft = dragStart.scrollLeft - deltaX;
+    container.scrollTop = dragStart.scrollTop - deltaY;
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    const container = miniContainerRef.current;
+    if (container) {
+      container.style.cursor = 'grab';
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (isDragging) {
+      setIsDragging(false);
+      const container = miniContainerRef.current;
+      if (container) {
+        container.style.cursor = 'grab';
+      }
+    }
+  };
+
   // Vérifier que le composant est monté côté client
   useEffect(() => {
     setIsMounted(true);
+  }, []);
+
+  // Gérer la molette pour zoomer
+  useEffect(() => {
+    const container = miniContainerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        if (e.deltaY < 0) {
+          zoomIn();
+        } else {
+          zoomOut();
+        }
+      }
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
   }, []);
 
   // Gérer le défilement du body et la touche Échap quand le modal est ouvert
@@ -237,13 +314,13 @@ export default function StoryTreeVisualization({
 
   return (
     <>
-      {/* Vue minimaliste - Plus grande et scrollable */}
-      <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-2xl rounded-2xl border border-cyan-400/30 shadow-xl p-4 w-96">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="bg-cyan-500/20 p-2 rounded-lg">
+      {/* Vue minimaliste - Compacte et scrollable */}
+      <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-2xl rounded-xl border border-cyan-400/30 shadow-xl p-2 w-56">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            <div className="bg-cyan-500/20 p-1.5 rounded-md">
               <svg
-                className="w-4 h-4 text-cyan-400"
+                className="w-3 h-3 text-cyan-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -257,106 +334,259 @@ export default function StoryTreeVisualization({
               </svg>
             </div>
             <div>
-              <h3 className="text-white font-bold text-sm">Carte d'Histoire</h3>
-              <p className="text-cyan-300 text-xs">{nodes.length} nœud{nodes.length > 1 ? 's' : ''}</p>
+              <h3 className="text-white font-bold text-xs">Carte</h3>
+              <p className="text-cyan-300 text-[10px]">{nodes.length} nœud{nodes.length > 1 ? 's' : ''}</p>
             </div>
           </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="text-cyan-400 hover:text-cyan-300 transition-all p-2 hover:bg-cyan-500/20 rounded-lg group"
-            title="Vue plein écran"
-            type="button"
-          >
-            <svg
-              className="w-5 h-5 group-hover:scale-110 transition-transform"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
-              />
-            </svg>
-          </button>
         </div>
 
-        {/* Visualisation graphique scrollable */}
-        <div ref={miniContainerRef} className="relative h-72 bg-black/30 rounded-xl overflow-auto border border-cyan-400/20 shadow-inner"
+        {/* Contrôles de zoom */}
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={zoomOut}
+              disabled={zoom <= 0.4}
+              className="w-5 h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-cyan-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-xs font-bold"
+              title="Dézoomer"
+            >
+              −
+            </button>
+            <button
+              onClick={resetZoom}
+              className="px-1.5 h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-cyan-300 transition-all text-[9px] font-medium"
+              title="Réinitialiser le zoom"
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            <button
+              onClick={zoomIn}
+              disabled={zoom >= 2}
+              className="w-5 h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-cyan-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-xs font-bold"
+              title="Zoomer"
+            >
+              +
+            </button>
+          </div>
+          <span className="text-[8px] text-white/40">Glisser</span>
+        </div>
+
+        {/* Visualisation graphique scrollable avec drag */}
+        <div 
+          ref={miniContainerRef} 
+          className={`relative h-40 bg-black/30 rounded-lg overflow-auto border border-cyan-400/20 shadow-inner select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
           style={{
             scrollbarWidth: 'thin',
             scrollbarColor: 'rgba(34, 211, 238, 0.3) rgba(0, 0, 0, 0.2)'
           }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
         >
           {nodes.length > 0 ? (
             <>
               {(() => {
-                // Afficher tous les nœuds dans la vue minimaliste
                 const nodesToShow = nodes;
 
-                // Calculer les positions pour TOUS les nœuds
-                const positions = calculatePositions();
+                // Calculer la profondeur de chaque nœud
+                const getNodeDepth = (nodeId: string): number => {
+                  const node = nodesToShow.find(n => n.id === nodeId);
+                  if (!node || !node.parentId) return 0;
+                  return getNodeDepth(node.parentId) + 1;
+                };
 
-                // Calculer la profondeur max pour dimensionner le conteneur
+                // Trouver la profondeur max
                 let maxDepth = 0;
                 nodesToShow.forEach(node => {
-                  let depth = 0;
-                  let current = node;
-                  while (current.parentId) {
-                    depth++;
-                    current = nodesToShow.find(n => n.id === current.parentId) || current;
-                    if (!current.parentId) break;
-                  }
-                  maxDepth = Math.max(maxDepth, depth);
+                  maxDepth = Math.max(maxDepth, getNodeDepth(node.id));
                 });
 
-                // Hauteur fixe par niveau (50px) + marge
-                const levelHeight = 70;
-                const containerHeight = Math.max(260, (maxDepth + 1) * levelHeight + 40);
+                // Paramètres de layout en PIXELS - ajustés par le zoom
+                const baseStartY = 50;
+                const baseLevelSpacing = 100; // Espace vertical entre les niveaux
+                const baseNodeSpacing = 120; // Espacement horizontal minimum entre nœuds
+                const startY = baseStartY * zoom;
+                const levelSpacing = baseLevelSpacing * zoom;
+                const nodeSpacing = baseNodeSpacing * zoom;
+
+                // Calculer les positions avec un algorithme récursif qui respecte la hiérarchie
+                const positions = new Map<string, { x: number; y: number }>();
+                const subtreeWidths = new Map<string, number>(); // Largeur du sous-arbre de chaque nœud
+
+                // Calculer la largeur du sous-arbre pour chaque nœud (nombre de feuilles)
+                const getSubtreeWidth = (nodeId: string): number => {
+                  if (subtreeWidths.has(nodeId)) return subtreeWidths.get(nodeId)!;
+                  
+                  const children = nodesToShow.filter(n => n.parentId === nodeId);
+                  if (children.length === 0) {
+                    subtreeWidths.set(nodeId, 1);
+                    return 1;
+                  }
+                  
+                  const width = children.reduce((sum, child) => sum + getSubtreeWidth(child.id), 0);
+                  subtreeWidths.set(nodeId, width);
+                  return width;
+                };
+
+                // Positionner récursivement depuis la racine
+                const positionSubtree = (nodeId: string, depth: number, leftX: number): number => {
+                  const node = nodesToShow.find(n => n.id === nodeId);
+                  if (!node) return leftX;
+
+                  const children = nodesToShow.filter(n => n.parentId === nodeId);
+                  const subtreeWidth = getSubtreeWidth(nodeId);
+                  
+                  // Y en pixels basé sur la profondeur
+                  const y = startY + depth * levelSpacing;
+
+                  if (children.length === 0) {
+                    // Nœud feuille : positionner au centre de son espace
+                    const x = leftX + nodeSpacing / 2;
+                    positions.set(nodeId, { x, y });
+                    return leftX + nodeSpacing;
+                  }
+
+                  // Positionner les enfants d'abord
+                  let currentX = leftX;
+                  children.forEach(child => {
+                    currentX = positionSubtree(child.id, depth + 1, currentX);
+                  });
+
+                  // Positionner le parent au centre de ses enfants
+                  const childPositions = children.map(c => positions.get(c.id)!);
+                  const minChildX = Math.min(...childPositions.map(p => p.x));
+                  const maxChildX = Math.max(...childPositions.map(p => p.x));
+                  const x = (minChildX + maxChildX) / 2;
+                  
+                  positions.set(nodeId, { x, y });
+                  return currentX;
+                };
+
+                // Trouver la racine et positionner tout l'arbre
+                const rootNode = nodesToShow.find(n => !n.parentId);
+                let totalWidth = nodeSpacing;
+                if (rootNode) {
+                  totalWidth = positionSubtree(rootNode.id, 0, 0);
+                }
+
+                // Calculer les dimensions du conteneur
+                const containerWidth = Math.max(350, totalWidth + 50 * zoom);
+                const containerHeight = Math.max(260, startY + (maxDepth + 1) * levelSpacing + 40 * zoom);
+
+                // Centrer l'arbre dans le conteneur
+                const offsetX = (containerWidth - totalWidth) / 2;
+                positions.forEach((pos, nodeId) => {
+                  positions.set(nodeId, { x: pos.x + offsetX, y: pos.y });
+                });
+
+                // Grouper les nœuds par niveau (pour le rendu des lignes)
+                const nodesByLevel = new Map<number, typeof nodesToShow>();
+                nodesToShow.forEach(node => {
+                  const depth = getNodeDepth(node.id);
+                  if (!nodesByLevel.has(depth)) nodesByLevel.set(depth, []);
+                  nodesByLevel.get(depth)!.push(node);
+                });
 
                 return (
-                  <div className="relative w-full" style={{ minHeight: `${containerHeight}px` }}>
-                    {/* SVG pour les lignes */}
+                  <div 
+                    className="relative" 
+                    style={{ minHeight: `${containerHeight}px`, minWidth: `${containerWidth}px` }}
+                  >
+                    {/* SVG pour les lignes en forme d'arbre (angles droits) */}
                     <svg
-                      className="absolute top-0 left-0 w-full pointer-events-none"
-                      style={{ height: `${containerHeight}px` }}
+                      className="absolute top-0 left-0 pointer-events-none"
+                      style={{ height: `${containerHeight}px`, width: `${containerWidth}px` }}
                     >
-                      {nodesToShow.map((node) => {
-                        if (!node.parentId) return null;
+                      {/* Dessiner les connexions parent -> enfants */}
+                      {Array.from(nodesByLevel.entries()).map(([depth, nodesAtLevel]) => {
+                        return nodesAtLevel.map(node => {
+                          // Trouver les enfants de ce nœud
+                          const children = nodesToShow.filter(n => n.parentId === node.id);
+                          if (children.length === 0) return null;
 
-                        const parentPos = positions.get(node.parentId);
-                        const childPos = positions.get(node.id);
+                          const parentPos = positions.get(node.id);
+                          if (!parentPos) return null;
 
-                        if (!parentPos || !childPos) return null;
+                          // Position Y du point de jonction (à mi-chemin entre parent et enfants)
+                          const nodeHeight = 32 * zoom;
+                          const midY = parentPos.y + levelSpacing / 2;
 
-                        // Convertir les positions Y en pixels (Y est en %)
-                        const y1 = (parentPos.y / 100) * containerHeight;
-                        const y2 = (childPos.y / 100) * containerHeight;
+                          // Trouver les positions X des enfants
+                          const childrenPositions = children
+                            .map(child => positions.get(child.id))
+                            .filter(Boolean) as { x: number; y: number }[];
 
-                        return (
-                          <g key={`line-${node.id}`}>
-                            <line
-                              x1={`${parentPos.x}%`}
-                              y1={y1}
-                              x2={`${childPos.x}%`}
-                              y2={y2}
-                              stroke="rgba(0, 0, 0, 0.3)"
-                              strokeWidth="2"
-                            />
-                            <line
-                              x1={`${parentPos.x}%`}
-                              y1={y1}
-                              x2={`${childPos.x}%`}
-                              y2={y2}
-                              stroke="rgb(34, 211, 238)"
-                              strokeWidth="1.5"
-                              strokeDasharray={currentNode?.id === node.id || currentNode?.id === node.parentId ? "0" : "3 2"}
-                              className="opacity-60"
-                            />
-                          </g>
-                        );
+                          if (childrenPositions.length === 0) return null;
+
+                          const minChildX = Math.min(...childrenPositions.map(p => p.x));
+                          const maxChildX = Math.max(...childrenPositions.map(p => p.x));
+
+                          return (
+                            <g key={`connector-${node.id}`}>
+                              {/* Ligne verticale du parent vers le milieu */}
+                              <line
+                                x1={parentPos.x}
+                                y1={parentPos.y + nodeHeight / 2}
+                                x2={parentPos.x}
+                                y2={midY}
+                                stroke="rgba(0, 0, 0, 0.3)"
+                                strokeWidth="3"
+                              />
+                              <line
+                                x1={parentPos.x}
+                                y1={parentPos.y + nodeHeight / 2}
+                                x2={parentPos.x}
+                                y2={midY}
+                                stroke="rgb(34, 211, 238)"
+                                strokeWidth="2"
+                              />
+
+                              {/* Ligne horizontale entre les enfants (si plus d'un enfant) */}
+                              {childrenPositions.length > 1 && (
+                                <>
+                                  <line
+                                    x1={minChildX}
+                                    y1={midY}
+                                    x2={maxChildX}
+                                    y2={midY}
+                                    stroke="rgba(0, 0, 0, 0.3)"
+                                    strokeWidth="3"
+                                  />
+                                  <line
+                                    x1={minChildX}
+                                    y1={midY}
+                                    x2={maxChildX}
+                                    y2={midY}
+                                    stroke="rgb(34, 211, 238)"
+                                    strokeWidth="2"
+                                  />
+                                </>
+                              )}
+
+                              {/* Lignes verticales vers chaque enfant */}
+                              {childrenPositions.map((childPos, idx) => (
+                                <g key={`child-line-${idx}`}>
+                                  <line
+                                    x1={childPos.x}
+                                    y1={midY}
+                                    x2={childPos.x}
+                                    y2={childPos.y - nodeHeight / 2}
+                                    stroke="rgba(0, 0, 0, 0.3)"
+                                    strokeWidth="3"
+                                  />
+                                  <line
+                                    x1={childPos.x}
+                                    y1={midY}
+                                    x2={childPos.x}
+                                    y2={childPos.y - nodeHeight / 2}
+                                    stroke="rgb(34, 211, 238)"
+                                    strokeWidth="2"
+                                  />
+                                </g>
+                              ))}
+                            </g>
+                          );
+                        });
                       })}
                     </svg>
 
@@ -365,8 +595,11 @@ export default function StoryTreeVisualization({
                       const pos = positions.get(node.id);
                       if (!pos) return null;
 
-                      // Y en pixels
-                      const yPx = (pos.y / 100) * containerHeight;
+                      // Taille des nœuds ajustée par le zoom
+                      const nodeMinWidth = 65 * zoom;
+                      const nodeMinHeight = 32 * zoom;
+                      const nodeMaxWidth = 120 * zoom;
+                      const fontSize = Math.max(9, 11 * zoom);
 
                       return (
                         <div
@@ -374,8 +607,8 @@ export default function StoryTreeVisualization({
                           data-node-id={node.id}
                           className="absolute cursor-pointer transition-all duration-200 hover:scale-110"
                           style={{
-                            left: `${pos.x}%`,
-                            top: `${yPx}px`,
+                            left: `${pos.x}px`,
+                            top: `${pos.y}px`,
                             transform: "translate(-50%, -50%)",
                             zIndex: 10,
                           }}
@@ -385,21 +618,27 @@ export default function StoryTreeVisualization({
                           }}
                         >
                           <div
-                            className={`px-2 py-1 rounded flex flex-col items-center justify-center text-[10px] font-semibold transition-all shadow-sm ${
+                            className={`rounded-lg flex flex-col items-center justify-center font-semibold transition-all shadow-md ${
                               currentNode?.id === node.id
-                                ? "bg-gradient-to-br from-cyan-500/50 to-blue-500/50 border-2 border-yellow-400 text-white shadow-md shadow-cyan-500/40 ring-1 ring-yellow-400/50"
+                                ? "bg-gradient-to-br from-cyan-500 to-blue-600 border-2 border-yellow-400 text-white shadow-lg shadow-cyan-500/50 ring-2 ring-yellow-400/50"
                                 : node.isEnd
-                                ? "bg-gradient-to-br from-green-500/30 to-emerald-500/30 border border-green-400/50 text-green-100"
-                                : "bg-gradient-to-br from-white/10 to-white/5 border border-cyan-400/40 text-cyan-100 hover:from-cyan-500/30 hover:to-blue-500/30"
+                                ? "bg-gradient-to-br from-green-600 to-emerald-700 border-2 border-green-400 text-white"
+                                : "bg-gradient-to-br from-slate-700 to-slate-800 border border-cyan-400/50 text-cyan-100 hover:from-cyan-600 hover:to-blue-700"
                             }`}
-                            style={{ minWidth: "50px", minHeight: "26px", maxWidth: "90px" }}
+                            style={{ 
+                              minWidth: `${nodeMinWidth}px`, 
+                              minHeight: `${nodeMinHeight}px`, 
+                              maxWidth: `${nodeMaxWidth}px`,
+                              fontSize: `${fontSize}px`,
+                              padding: `${4 * zoom}px ${8 * zoom}px`
+                            }}
                             title={node.label || "Début"}
                           >
                             <span className="truncate text-center leading-tight">{node.label || "Début"}</span>
-                            {node.isEnd && <span className="text-[8px] text-green-300">🏁</span>}
+                            {node.isEnd && <span style={{ fontSize: `${8 * zoom}px` }} className="mt-0.5">🏁</span>}
                           </div>
                           {currentNode?.id === node.id && (
-                            <div className="absolute -top-1 -right-1 text-[10px] animate-bounce">📍</div>
+                            <div className="absolute -top-2 -right-2 animate-bounce" style={{ fontSize: `${12 * zoom}px` }}>📍</div>
                           )}
                         </div>
                       );
@@ -415,23 +654,28 @@ export default function StoryTreeVisualization({
           )}
         </div>
 
-        {/* Aide à la navigation */}
-        <div className="mt-3 p-2 bg-cyan-500/10 rounded-lg border border-cyan-400/20">
-          <div className="flex items-center justify-center gap-4 text-xs text-cyan-300">
-            <span className="flex items-center gap-1">
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-              </svg>
-              Clic = naviguer
-            </span>
-            <span className="flex items-center gap-1">
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clipRule="evenodd" />
-              </svg>
-              Scroll = explorer
-            </span>
-          </div>
-        </div>
+        {/* Bouton plein écran en bas */}
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-400/30 rounded-lg text-cyan-400 hover:text-cyan-300 transition-all text-xs"
+          title="Vue plein écran"
+          type="button"
+        >
+          <svg
+            className="w-3.5 h-3.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+            />
+          </svg>
+          Plein écran
+        </button>
       </div>
 
       {/* Modal plein écran - Rendu via portail pour éviter les problèmes de z-index */}
@@ -532,67 +776,169 @@ export default function StoryTreeVisualization({
               style={{ scrollBehavior: 'smooth' }}
             >
               {(() => {
-                const positions = calculatePositions();
+                const nodesToShow = nodes;
 
-                // Calculer la hauteur et largeur nécessaires - VERSION COMPACTE
-                let maxY = 0;
-                let maxX = 0;
-                positions.forEach(pos => {
-                  maxY = Math.max(maxY, pos.y);
-                  maxX = Math.max(maxX, pos.x);
+                // Calculer la profondeur de chaque nœud
+                const getNodeDepth = (nodeId: string): number => {
+                  const node = nodesToShow.find(n => n.id === nodeId);
+                  if (!node || !node.parentId) return 0;
+                  return getNodeDepth(node.parentId) + 1;
+                };
+
+                // Trouver la profondeur max
+                let maxDepth = 0;
+                nodesToShow.forEach(node => {
+                  maxDepth = Math.max(maxDepth, getNodeDepth(node.id));
                 });
 
-                // Réduire les marges et la taille pour plus de compacité
-                const containerHeight = Math.max(500, maxY + 100);
-                const containerWidth = Math.max(900, (maxX / 100) * 1000);
+                // Paramètres de layout en PIXELS pour le modal (plus grand)
+                const startY = 80;
+                const levelSpacing = 150;
+                const nodeSpacing = 200;
+
+                // Calculer les positions avec l'algorithme récursif
+                const positions = new Map<string, { x: number; y: number }>();
+                const subtreeWidths = new Map<string, number>();
+
+                const getSubtreeWidth = (nodeId: string): number => {
+                  if (subtreeWidths.has(nodeId)) return subtreeWidths.get(nodeId)!;
+                  const children = nodesToShow.filter(n => n.parentId === nodeId);
+                  if (children.length === 0) {
+                    subtreeWidths.set(nodeId, 1);
+                    return 1;
+                  }
+                  const width = children.reduce((sum, child) => sum + getSubtreeWidth(child.id), 0);
+                  subtreeWidths.set(nodeId, width);
+                  return width;
+                };
+
+                const positionSubtree = (nodeId: string, depth: number, leftX: number): number => {
+                  const node = nodesToShow.find(n => n.id === nodeId);
+                  if (!node) return leftX;
+
+                  const children = nodesToShow.filter(n => n.parentId === nodeId);
+                  const y = startY + depth * levelSpacing;
+
+                  if (children.length === 0) {
+                    const x = leftX + nodeSpacing / 2;
+                    positions.set(nodeId, { x, y });
+                    return leftX + nodeSpacing;
+                  }
+
+                  let currentX = leftX;
+                  children.forEach(child => {
+                    currentX = positionSubtree(child.id, depth + 1, currentX);
+                  });
+
+                  const childPositions = children.map(c => positions.get(c.id)!);
+                  const minChildX = Math.min(...childPositions.map(p => p.x));
+                  const maxChildX = Math.max(...childPositions.map(p => p.x));
+                  const x = (minChildX + maxChildX) / 2;
+                  
+                  positions.set(nodeId, { x, y });
+                  return currentX;
+                };
+
+                const rootNode = nodesToShow.find(n => !n.parentId);
+                let totalWidth = nodeSpacing;
+                if (rootNode) {
+                  totalWidth = positionSubtree(rootNode.id, 0, 0);
+                }
+
+                const containerWidth = Math.max(900, totalWidth + 100);
+                const containerHeight = Math.max(500, startY + (maxDepth + 1) * levelSpacing + 80);
+
+                // Centrer l'arbre
+                const offsetX = Math.max(50, (containerWidth - totalWidth) / 2);
+                positions.forEach((pos, nodeId) => {
+                  positions.set(nodeId, { x: pos.x + offsetX, y: pos.y });
+                });
+
+                // Grouper les nœuds par niveau
+                const nodesByLevel = new Map<number, typeof nodesToShow>();
+                nodesToShow.forEach(node => {
+                  const depth = getNodeDepth(node.id);
+                  if (!nodesByLevel.has(depth)) nodesByLevel.set(depth, []);
+                  nodesByLevel.get(depth)!.push(node);
+                });
+
+                const nodeHeight = 60;
 
                 return (
-                  <div className="relative w-full" style={{ minHeight: `${containerHeight}px`, minWidth: `${containerWidth}px` }}>
+                  <div className="relative" style={{ minHeight: `${containerHeight}px`, minWidth: `${containerWidth}px` }}>
                     {nodes.length > 0 && (
                       <>
-                        {/* SVG pour les lignes */}
+                        {/* SVG pour les lignes en angles droits */}
                         <svg
-                          className="absolute inset-0 pointer-events-none"
-                          style={{ zIndex: 0, width: `${containerWidth}px`, height: `${containerHeight}px` }}
+                          className="absolute top-0 left-0 pointer-events-none"
+                          style={{ width: `${containerWidth}px`, height: `${containerHeight}px` }}
                         >
-                          {nodes.map((node) => {
-                            if (!node.parentId) return null;
+                          {Array.from(nodesByLevel.entries()).map(([depth, nodesAtLevel]) => {
+                            return nodesAtLevel.map(node => {
+                              const children = nodesToShow.filter(n => n.parentId === node.id);
+                              if (children.length === 0) return null;
 
-                            const parentPos = positions.get(node.parentId);
-                            const childPos = positions.get(node.id);
+                              const parentPos = positions.get(node.id);
+                              if (!parentPos) return null;
 
-                            if (!parentPos || !childPos) return null;
+                              const midY = parentPos.y + levelSpacing / 2;
+                              const childrenPositions = children
+                                .map(child => positions.get(child.id))
+                                .filter(Boolean) as { x: number; y: number }[];
 
-                            // Convertir les positions en pixels
-                            const x1 = (parentPos.x / 100) * containerWidth;
-                            const y1 = parentPos.y;
-                            const x2 = (childPos.x / 100) * containerWidth;
-                            const y2 = childPos.y;
+                              if (childrenPositions.length === 0) return null;
 
-                            return (
-                              <g key={`line-${node.id}`}>
-                                {/* Ligne d'ombre */}
-                                <line
-                                  x1={x1}
-                                  y1={y1}
-                                  x2={x2}
-                                  y2={y2}
-                                  stroke="rgba(0, 0, 0, 0.3)"
-                                  strokeWidth="3"
-                                />
-                                {/* Ligne principale */}
-                                <line
-                                  x1={x1}
-                                  y1={y1}
-                                  x2={x2}
-                                  y2={y2}
-                                  stroke="rgb(34, 211, 238)"
-                                  strokeWidth="2"
-                                  strokeDasharray={currentNode?.id === node.id || currentNode?.id === node.parentId ? "0" : "4 2"}
-                                  className="opacity-70"
-                                />
-                              </g>
-                            );
+                              const minChildX = Math.min(...childrenPositions.map(p => p.x));
+                              const maxChildX = Math.max(...childrenPositions.map(p => p.x));
+
+                              return (
+                                <g key={`connector-${node.id}`}>
+                                  {/* Ligne verticale du parent */}
+                                  <line
+                                    x1={parentPos.x} y1={parentPos.y + nodeHeight / 2}
+                                    x2={parentPos.x} y2={midY}
+                                    stroke="rgba(0, 0, 0, 0.3)" strokeWidth="4"
+                                  />
+                                  <line
+                                    x1={parentPos.x} y1={parentPos.y + nodeHeight / 2}
+                                    x2={parentPos.x} y2={midY}
+                                    stroke="rgb(34, 211, 238)" strokeWidth="3"
+                                  />
+
+                                  {/* Ligne horizontale */}
+                                  {childrenPositions.length > 1 && (
+                                    <>
+                                      <line
+                                        x1={minChildX} y1={midY}
+                                        x2={maxChildX} y2={midY}
+                                        stroke="rgba(0, 0, 0, 0.3)" strokeWidth="4"
+                                      />
+                                      <line
+                                        x1={minChildX} y1={midY}
+                                        x2={maxChildX} y2={midY}
+                                        stroke="rgb(34, 211, 238)" strokeWidth="3"
+                                      />
+                                    </>
+                                  )}
+
+                                  {/* Lignes verticales vers les enfants */}
+                                  {childrenPositions.map((childPos, idx) => (
+                                    <g key={`child-line-${idx}`}>
+                                      <line
+                                        x1={childPos.x} y1={midY}
+                                        x2={childPos.x} y2={childPos.y - nodeHeight / 2}
+                                        stroke="rgba(0, 0, 0, 0.3)" strokeWidth="4"
+                                      />
+                                      <line
+                                        x1={childPos.x} y1={midY}
+                                        x2={childPos.x} y2={childPos.y - nodeHeight / 2}
+                                        stroke="rgb(34, 211, 238)" strokeWidth="3"
+                                      />
+                                    </g>
+                                  ))}
+                                </g>
+                              );
+                            });
                           })}
                         </svg>
 
@@ -601,23 +947,19 @@ export default function StoryTreeVisualization({
                           const pos = positions.get(node.id);
                           if (!pos) return null;
 
-                          // Convertir la position x en pixels
-                          const xPos = (pos.x / 100) * containerWidth;
-
                           return (
                             <div
                               key={node.id}
                               ref={(el) => setNodeRef(node.id, el)}
                               className="absolute cursor-pointer transition-all duration-300 hover:scale-110"
                               style={{
-                                left: `${xPos}px`,
+                                left: `${pos.x}px`,
                                 top: `${pos.y}px`,
                                 transform: "translate(-50%, -50%)",
                                 zIndex: 10,
                               }}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                console.log(`🖱️ Clic sur nœud (modal): ${node.label} (${node.id})`);
                                 onNodeSelect(node);
                               }}
                             >
