@@ -2,6 +2,10 @@ import type { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/user.ts';
+import { Story } from '../models/story.ts';
+import { Page } from '../models/page.ts';
+import { Party } from '../models/party.ts';
+import { Rating } from '../models/rating.ts';
 import type { AuthenticatedRequest } from '../middlewares/authMiddleware.ts';
 
 export async function createUser(req: Request, res: Response, next: NextFunction) {
@@ -186,6 +190,91 @@ export async function deleteUser(req: Request, res: Response, next: NextFunction
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.status(204).send();
   } catch (err) {
+    next(err);
+  }
+}
+
+// Récupérer les statistiques d'un utilisateur
+export async function getUserStats(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({ message: 'userId est requis' });
+    }
+
+    console.log('📊 Récupération des statistiques pour:', userId);
+
+    // Vérifier que l'utilisateur existe
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+
+    const userObjectId = user._id;
+
+    // 1. Histoires écrites par l'utilisateur
+    const storiesWritten = await Story.countDocuments({ author: userObjectId });
+
+    // 2. Pages/chapitres écrits (pages des histoires de l'utilisateur)
+    const userStories = await Story.find({ author: userObjectId }).select('_id');
+    const storyIds = userStories.map(s => s._id);
+    const pagesWritten = await Page.countDocuments({ story_id: { $in: storyIds } });
+
+    // 3. Histoires lues (parties uniques par story_id)
+    const partiesRead = await Party.aggregate([
+      { $match: { user_id: userObjectId } },
+      { $group: { _id: '$story_id' } },
+      { $count: 'count' }
+    ]);
+    const storiesRead = partiesRead[0]?.count || 0;
+
+    // 4. Parties totales (sessions de lecture)
+    const totalParties = await Party.countDocuments({ user_id: userObjectId });
+
+    // 5. Parties terminées
+    const completedParties = await Party.countDocuments({ 
+      user_id: userObjectId,
+      end_date: { $ne: null }
+    });
+
+    // 6. Note moyenne reçue sur ses histoires
+    const ratingsReceived = await Rating.aggregate([
+      { $match: { story_id: { $in: storyIds } } },
+      { 
+        $group: { 
+          _id: null, 
+          averageRating: { $avg: '$rating' },
+          totalRatings: { $sum: 1 }
+        } 
+      }
+    ]);
+    const averageRating = ratingsReceived[0]?.averageRating || 0;
+    const totalRatingsReceived = ratingsReceived[0]?.totalRatings || 0;
+
+    // 7. Notes données par l'utilisateur
+    const ratingsGiven = await Rating.countDocuments({ user_id: userObjectId });
+
+    // 8. Date d'inscription
+    const memberSince = user.createdAt;
+
+    const stats = {
+      storiesWritten,
+      pagesWritten,
+      storiesRead,
+      totalParties,
+      completedParties,
+      averageRating: Math.round(averageRating * 10) / 10, // Arrondi à 1 décimale
+      totalRatingsReceived,
+      ratingsGiven,
+      memberSince
+    };
+
+    console.log('✅ Statistiques récupérées:', stats);
+
+    res.json(stats);
+  } catch (err) {
+    console.error('❌ Erreur lors de la récupération des statistiques:', err);
     next(err);
   }
 }

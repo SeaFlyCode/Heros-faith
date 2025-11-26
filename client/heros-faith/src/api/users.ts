@@ -5,8 +5,21 @@ export interface User {
   username: string;
   email: string;
   role: 'user' | 'creator' | 'admin';
+  avatar?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface UserStats {
+  storiesWritten: number;
+  pagesWritten: number;
+  storiesRead: number;
+  totalParties: number;
+  completedParties: number;
+  averageRating: number;
+  totalRatingsReceived: number;
+  ratingsGiven: number;
+  memberSince?: string;
 }
 
 export interface LoginRequest {
@@ -32,6 +45,7 @@ export interface UpdateUserRequest {
   password?: string;
   currentPassword?: string;
   role?: 'user' | 'creator' | 'admin';
+  avatar?: string;
 }
 
 /**
@@ -67,6 +81,13 @@ export const usersApi = {
   },
 
   /**
+   * Récupérer les statistiques d'un utilisateur
+   */
+  getStats: (userId: string): Promise<UserStats> => {
+    return apiClient.get<UserStats>(`/users/${userId}/stats`);
+  },
+
+  /**
    * Mettre à jour un utilisateur
    */
   update: (userId: string, userData: UpdateUserRequest): Promise<User> => {
@@ -80,4 +101,3 @@ export const usersApi = {
     return apiClient.delete<void>(`/users/${userId}`);
   },
 };
-

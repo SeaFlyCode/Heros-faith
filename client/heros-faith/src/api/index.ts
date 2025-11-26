@@ -3,7 +3,7 @@
  */
 
 export { apiClient, ApiClient, type ApiError } from './client';
-export { usersApi, type User, type LoginRequest, type LoginResponse, type CreateUserRequest, type UpdateUserRequest } from './users';
+export { usersApi, type User, type UserStats, type LoginRequest, type LoginResponse, type CreateUserRequest, type UpdateUserRequest } from './users';
 export { storiesApi, getAuthorDisplayName, type Story, type StoryAuthor, type CreateStoryRequest, type UpdateStoryRequest } from './stories';
 export { storyPagesApi, type StoryPage, type CreateStoryPageRequest, type UpdateStoryPageRequest } from './storyPages';
 export { storyChoicesApi, type StoryChoice, type CreateStoryChoiceRequest, type UpdateStoryChoiceRequest } from './storyChoices';
@@ -14,4 +14,3 @@ export { choicesApi, type Choice, type CreateChoiceRequest, type UpdateChoiceReq
 export { ratingsApi, type Rating, type CreateRatingRequest, type UpdateRatingRequest } from './ratings';
 export { reportsApi, type Report, type CreateReportRequest, type UpdateReportRequest } from './reports';
 export { useApi, useAuth } from './hooks';
-

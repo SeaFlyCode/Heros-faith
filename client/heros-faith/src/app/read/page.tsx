@@ -82,7 +82,11 @@ const StoryCard = ({ story, showProgress = false }: { story: EnrichedStory; show
         <h3 className="text-white font-semibold text-base group-hover:text-cyan-400 transition-colors line-clamp-1">
           {story.title}
         </h3>
-        <p className="text-white/60 text-sm line-clamp-1">Par {story.author}</p>
+        <p className="text-white/60 text-sm line-clamp-1">
+          Par {typeof story.author === 'object' && story.author !== null 
+            ? (story.author as { username?: string }).username || 'Anonyme'
+            : story.author || 'Anonyme'}
+        </p>
         {showProgress && story.progress !== undefined && (
           <p className="text-cyan-400 text-xs font-medium">{story.progress}% complété</p>
         )}
