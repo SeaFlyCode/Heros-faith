@@ -30,6 +30,8 @@ export default function WriteStoryPage() {
   const [storyStatus, setStoryStatus] = useState<'draft' | 'published'>('draft');
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const loadStoryAndPages = useCallback(async () => {
     try {
@@ -148,6 +150,78 @@ export default function WriteStoryPage() {
     });
   };
 
+  const handleChoiceBlur = async (choiceId: string) => {
+    if (!currentPage) return;
+
+    const choice = currentPage.choices.find(c => c._id === choiceId);
+    if (!choice || choice._id.startsWith('temp-')) {
+      // Ne pas sauvegarder les choix temporaires
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      await storyChoicesApi.update(choice._id, {
+        text: choice.text,
+      });
+      console.log("✅ Choix sauvegardé:", choice._id);
+
+      // Mettre à jour la liste des pages
+      setPages(pages.map(p => p._id === currentPage._id ? currentPage : p));
+    } catch (err) {
+      const apiError = err as ApiError;
+      console.error("❌ Erreur lors de la sauvegarde du choix:", apiError);
+      setError("Erreur lors de la sauvegarde du choix");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveChoice = async (choiceId: string) => {
+    if (!currentPage) return;
+
+    const choice = currentPage.choices.find(c => c._id === choiceId);
+    if (!choice || !choice.text.trim()) {
+      setError("Le texte du choix ne peut pas être vide");
+      return;
+    }
+
+    // Si le choix est déjà sauvegardé, ne rien faire
+    if (!choice._id.startsWith('temp-')) {
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+
+      // Créer le choix sans page cible (sera ajoutée plus tard lors du développement)
+      const savedChoice = await storyChoicesApi.create({
+        page_id: currentPage._id,
+        text: choice.text,
+        target_page_id: "", // Pas de page cible pour l'instant
+      });
+
+      console.log("✅ Choix sauvegardé (sans développement):", savedChoice);
+
+      // Mettre à jour le choix dans l'état local
+      const updatedPage = {
+        ...currentPage,
+        choices: currentPage.choices.map(c =>
+          c._id === choiceId ? savedChoice : c
+        )
+      };
+
+      setCurrentPage(updatedPage);
+      setPages(pages.map(p => p._id === currentPage._id ? updatedPage : p));
+    } catch (err) {
+      const apiError = err as ApiError;
+      console.error("❌ Erreur lors de la sauvegarde du choix:", apiError);
+      setError(apiError.message || "Erreur lors de la sauvegarde du choix");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleDevelopChoice = async (choiceId: string) => {
     if (!currentPage || !storyId) return;
 
@@ -188,23 +262,22 @@ export default function WriteStoryPage() {
 
       console.log("✅ Choix sauvegardé:", savedChoice);
 
-      // 3. Ajouter la nouvelle page à la liste
-      const newPageWithChoices: PageWithChoices = {
-        ...newPage,
-        choices: []
-      };
-
-      setPages([...pages, newPageWithChoices]);
-
-      // 4. Mettre à jour la page actuelle avec le choix sauvegardé
+      // 3. Mettre à jour la page actuelle avec le choix sauvegardé
       const updatedCurrentPage = {
         ...currentPage,
         choices: currentPage.choices.map(c =>
           c._id === choiceId ? savedChoice : c
         )
       };
+
+      // 4. Ajouter la nouvelle page à la liste et mettre à jour la page actuelle
+      const newPageWithChoices: PageWithChoices = {
+        ...newPage,
+        choices: []
+      };
+
+      setPages([...pages.map(p => p._id === currentPage._id ? updatedCurrentPage : p), newPageWithChoices]);
       setCurrentPage(updatedCurrentPage);
-      setPages(pages.map(p => p._id === currentPage._id ? updatedCurrentPage : p));
 
       // 5. Naviguer vers la nouvelle page
       setCurrentPage(newPageWithChoices);
@@ -241,24 +314,56 @@ export default function WriteStoryPage() {
     }
   };
 
+  const handleUnsetAsEnd = async () => {
+    if (!currentPage) return;
+
+    try {
+      setIsSaving(true);
+      await storyPagesApi.update(currentPage._id, {
+        is_ending: false,
+        ending_label: undefined
+      });
+
+      const updatedPage = { ...currentPage, is_ending: false, ending_label: undefined };
+      setCurrentPage(updatedPage);
+      setPages(pages.map(p => p._id === currentPage._id ? updatedPage : p));
+
+      console.log("✅ Page n'est plus une fin");
+    } catch (err) {
+      const apiError = err as ApiError;
+      console.error("❌ Erreur:", apiError);
+      setError("Erreur lors de la sauvegarde");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Convertir les pages en nœuds pour la visualisation d'arbre
   const convertPagesToNodes = () => {
-    return pages.map((page) => {
+    return pages.map((page, index) => {
       // Trouver le parent de cette page (la page qui a un choix pointant vers celle-ci)
       let parentId: string | undefined;
       let parentChoiceId: string | undefined;
+      let label: string | undefined;
 
       for (const p of pages) {
         const choice = p.choices.find((c) => c.target_page_id === page._id);
         if (choice) {
           parentId = p._id;
           parentChoiceId = choice._id;
+          label = choice.text || "Choix sans nom";
           break;
         }
       }
 
+      // Si c'est la première page (pas de parent), on l'appelle "Début"
+      if (!parentId && index === 0) {
+        label = "Début";
+      }
+
       return {
         id: page._id,
+        label: label,
         context: page.content || "Page vide",
         choices: page.choices.map((c) => ({
           id: c._id,
@@ -334,6 +439,29 @@ export default function WriteStoryPage() {
     }
   };
 
+  const handleDeleteStory = async () => {
+    if (!storyId) return;
+
+    try {
+      setIsDeleting(true);
+      setError("");
+
+      // Supprimer l'histoire (le backend supprime automatiquement les pages, choix et liens associés)
+      await storiesApi.delete(storyId);
+
+      console.log("✅ Histoire supprimée avec succès");
+
+      // Rediriger vers la liste des histoires
+      router.push("/stories");
+    } catch (err) {
+      const apiError = err as ApiError;
+      console.error("❌ Erreur lors de la suppression:", apiError);
+      setError(apiError.message || "Erreur lors de la suppression de l'histoire");
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-black">
@@ -353,17 +481,19 @@ export default function WriteStoryPage() {
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-black">
       {/* Background animé Prism avec transition */}
-      <PrismTransition
-        animationType="rotate"
-        timeScale={0.5}
-        height={2}
-        baseWidth={3}
-        targetScale={2}
-        hueShift={0}
-        colorFrequency={1}
-        noise={0.08}
-        glow={0.8}
-      />
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <PrismTransition
+          animationType="rotate"
+          timeScale={0.5}
+          height={2}
+          baseWidth={3}
+          targetScale={2}
+          hueShift={0}
+          colorFrequency={1}
+          noise={0.08}
+          glow={0.8}
+        />
+      </div>
 
       {/* Bouton retour */}
       <button
@@ -388,7 +518,7 @@ export default function WriteStoryPage() {
         <div className="absolute top-6 right-6 z-20">
           <StoryTreeVisualization
             nodes={convertPagesToNodes()}
-            currentNode={convertPagesToNodes().find((n) => n.id === currentPage._id)!}
+            currentNode={convertPagesToNodes().find((n) => n.id === currentPage._id)}
             onNodeSelect={handleNodeSelect}
           />
         </div>
@@ -402,7 +532,19 @@ export default function WriteStoryPage() {
             {storyTitle}
           </h1>
 
-          {/* Badge de statut et bouton publier */}
+          {/* Nom du nœud actuel */}
+          {currentPage && (
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span className="text-cyan-400 font-medium text-lg">
+                {convertPagesToNodes().find((n) => n.id === currentPage._id)?.label || "Début"}
+              </span>
+            </div>
+          )}
+
+          {/* Badge de statut et boutons d'actions */}
           <div className="flex items-center justify-center gap-4 mb-4">
             {storyStatus === 'draft' ? (
               <>
@@ -443,6 +585,19 @@ export default function WriteStoryPage() {
                 </button>
               </>
             )}
+
+            {/* Bouton de suppression */}
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={isDeleting}
+              className="px-4 py-1.5 bg-red-500/20 hover:bg-red-500/30 border border-red-400/50 text-red-300 text-sm rounded-full font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              title="Supprimer l'histoire"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              🗑️ Supprimer
+            </button>
           </div>
 
           <p className="text-white/60 text-center mb-8">
@@ -512,11 +667,17 @@ export default function WriteStoryPage() {
                               key={choice._id}
                               className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-4"
                             >
-                              <h4 className="text-white font-semibold mb-3">Choix {index + 1}</h4>
+                              <h4 className="text-white font-semibold mb-3">
+                                Choix {index + 1}
+                                {choice._id.startsWith('temp-') && (
+                                  <span className="ml-2 text-xs text-orange-400">(non sauvegardé)</span>
+                                )}
+                              </h4>
                               <input
                                 type="text"
                                 value={choice.text}
                                 onChange={(e) => handleChoiceChange(choice._id, e.target.value)}
+                                onBlur={() => handleChoiceBlur(choice._id)}
                                 placeholder={`Texte du choix ${index + 1}...`}
                                 className="w-full px-3 py-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 transition-all mb-3"
                               />
@@ -558,12 +719,17 @@ export default function WriteStoryPage() {
                     </button>
                   )}
                   {currentPage.is_ending && (
-                    <div className="flex-1 px-4 py-3 bg-green-500/20 text-green-300 font-semibold rounded-2xl border border-green-400/30 flex items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleUnsetAsEnd}
+                      disabled={isSaving}
+                      className="flex-1 px-4 py-3 bg-green-500/20 hover:bg-orange-500/30 text-green-300 hover:text-orange-300 font-semibold rounded-2xl border border-green-400/30 hover:border-orange-400/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
-                      C&apos;est une fin
-                    </div>
+                      <span>C&apos;est une fin - Cliquez pour continuer l&apos;histoire</span>
+                    </button>
                   )}
                 </div>
               </div>
@@ -571,7 +737,64 @@ export default function WriteStoryPage() {
           )}
         </div>
       </main>
+
+      {/* Modal de confirmation de suppression */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white/10 backdrop-blur-xl rounded-3xl border border-red-500/50 p-8 max-w-md w-full shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h2 className="text-white text-2xl font-bold">Supprimer l&apos;histoire</h2>
+            </div>
+
+            <p className="text-white/70 mb-6">
+              Êtes-vous sûr de vouloir supprimer définitivement <span className="font-semibold text-white">&quot;{storyTitle}&quot;</span> ?
+            </p>
+
+            <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 mb-6">
+              <p className="text-red-300 text-sm">
+                ⚠️ Cette action est <span className="font-bold">irréversible</span>. Tous les nœuds, choix et liens associés seront également supprimés.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-2xl border border-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleDeleteStory}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-3 bg-red-500/30 hover:bg-red-500/40 text-red-200 font-semibold rounded-2xl border border-red-400/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Suppression...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Oui, supprimer
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

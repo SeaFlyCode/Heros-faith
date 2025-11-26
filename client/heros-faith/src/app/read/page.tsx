@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import PrismTransition from "@/components/PrismTransition";
-import { storiesApi, partiesApi, ratingsApi, type Story, type ApiError } from "@/api";
+import { storiesApi, partiesApi, ratingsApi, usersApi, type Story, type ApiError } from "@/api";
 import { useAuth } from "@/hooks/useAuth";
 
 // Interface pour les histoires enrichies avec progression et rating
@@ -13,6 +13,7 @@ interface EnrichedStory extends Story {
   totalRatings?: number;
   genre?: string;
   partyId?: string;
+  authorName?: string; // Nom de l'auteur au lieu de l'ID
 }
 
 // Composant pour une vignette d'histoire
@@ -82,7 +83,7 @@ const StoryCard = ({ story, showProgress = false }: { story: EnrichedStory; show
         <h3 className="text-white font-semibold text-base group-hover:text-cyan-400 transition-colors line-clamp-1">
           {story.title}
         </h3>
-        <p className="text-white/60 text-sm line-clamp-1">Par {story.author}</p>
+        <p className="text-white/60 text-sm line-clamp-1">Par {story.authorName || story.author}</p>
         {showProgress && story.progress !== undefined && (
           <p className="text-cyan-400 text-xs font-medium">{story.progress}% complété</p>
         )}
@@ -171,22 +172,44 @@ export default function ReadPage() {
       console.log("✅ Histoires publiées:", publishedStories.length);
       console.log("📊 Total histoires:", allStories.length, "dont", allStories.length - publishedStories.length, "brouillons");
 
-      // 2. Enrichir les histoires avec les ratings
+      // 2. Enrichir les histoires avec les ratings et les noms d'auteurs
       const enrichedStories = await Promise.all(
         publishedStories.map(async (story) => {
           try {
+            // Récupérer le rating
             const ratingData = await ratingsApi.getStoryAverage(story._id);
+
+            // Récupérer le nom de l'auteur
+            let authorName = story.author;
+            try {
+              const authorData = await usersApi.getById(story.author);
+              authorName = authorData.username;
+            } catch (err) {
+              console.log(`Auteur non trouvé pour l'histoire ${story._id}`);
+            }
+
             return {
               ...story,
               averageRating: ratingData.averageRating,
               totalRatings: ratingData.totalRatings,
+              authorName: authorName,
             } as EnrichedStory;
           } catch (err) {
             // Si pas de ratings, retourner l'histoire sans
+            // Récupérer quand même le nom de l'auteur
+            let authorName = story.author;
+            try {
+              const authorData = await usersApi.getById(story.author);
+              authorName = authorData.username;
+            } catch (err) {
+              console.log(`Auteur non trouvé pour l'histoire ${story._id}`);
+            }
+
             return {
               ...story,
               averageRating: 0,
               totalRatings: 0,
+              authorName: authorName,
             } as EnrichedStory;
           }
         })

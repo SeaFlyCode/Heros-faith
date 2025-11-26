@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middlewares/authMiddleware.ts';
-import { roleMiddleware } from '../middlewares/roleMiddleware.ts';
 import {
     createStory,
     getAllStories,
@@ -16,7 +15,7 @@ router.post('/', authMiddleware, createStory);
 router.get('/', getAllStories);
 router.get('/:storyId', getStoryById);
 router.get('/:storyId/pages', authMiddleware, getPagesByStoryId);
-router.patch('/:storyId', authMiddleware, updateStory); // ✅ Retiré roleMiddleware('admin')
-router.delete('/:storyId', authMiddleware, roleMiddleware('admin'), deleteStory);
+router.patch('/:storyId', authMiddleware, updateStory);
+router.delete('/:storyId', authMiddleware, deleteStory); // ✅ L'auteur peut supprimer sa propre histoire
 
 export default router;

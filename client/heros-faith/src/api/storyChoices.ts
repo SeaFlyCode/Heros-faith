@@ -4,14 +4,14 @@ export interface StoryChoice {
   _id: string;
   page_id: string;
   text: string;
-  target_page_id: string;
+  target_page_id: string; // Peut être vide si le choix n'est pas encore développé
   condition?: string;
 }
 
 export interface CreateStoryChoiceRequest {
   page_id: string;
   text: string;
-  target_page_id: string;
+  target_page_id?: string; // Optionnel : peut être défini plus tard lors du développement
   condition?: string;
 }
 

@@ -87,13 +87,25 @@ export async function updateStory(req: AuthenticatedRequest, res: Response, next
     }
 }
 
-export async function deleteStory(req: Request, res: Response, next: NextFunction) {
+export async function deleteStory(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
         const { storyId } = req.params;
-        const story = await Story.findByIdAndDelete(storyId);
+        const userId = (req.user as JwtPayload)?.userId;
+        const userRole = (req.user as JwtPayload)?.role;
+
+        // Trouver l'histoire d'abord pour vérifier l'auteur
+        const story = await Story.findById(storyId);
         if (!story) {
             return res.status(404).json({ message: 'Story not found' });
         }
+
+        // Vérifier que l'utilisateur est l'auteur ou un admin
+        if (story.author.toString() !== userId?.toString() && userRole !== 'admin') {
+            return res.status(403).json({ message: 'Access denied: You can only delete your own stories' });
+        }
+
+        // Supprimer l'histoire (le hook pre('findOneAndDelete') s'occupera de la suppression en cascade)
+        await Story.findByIdAndDelete(storyId);
         res.status(204).send();
     } catch (err) {
         next(err);
