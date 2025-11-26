@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import PrismTransition from "@/components/PrismTransition";
 import { 
@@ -147,6 +147,7 @@ export default function ReadStoryPage() {
   const [choices, setChoices] = useState<Choice[]>([]);
   const [pageHistory, setPageHistory] = useState<string[]>([]);
   const [partyId, setPartyId] = useState<string | null>(null);
+  const partyIdRef = useRef<string | null>(null);
   
   // États UI
   const [isLoading, setIsLoading] = useState(true);
@@ -154,6 +155,11 @@ export default function ReadStoryPage() {
   const [error, setError] = useState("");
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [hasCompletedEnding, setHasCompletedEnding] = useState(false);
+
+  // Mettre à jour la ref quand partyId change
+  useEffect(() => {
+    partyIdRef.current = partyId;
+  }, [partyId]);
 
   // Charger les données de l'histoire
   useEffect(() => {
@@ -187,13 +193,15 @@ export default function ReadStoryPage() {
         try {
           // Chercher une partie existante non terminée
           const userParties = await partiesApi.getByUserId(user._id);
-          const existingParty = userParties.find(
-            (p: any) => p.story_id === storyId && !p.end_date
-          );
+          
+          const existingParty = userParties.find((p: any) => {
+            // Gérer le cas où story_id peut être un objet ou une chaîne
+            const partyStoryId = typeof p.story_id === 'object' ? p.story_id._id : p.story_id;
+            return partyStoryId === storyId && !p.end_date;
+          });
 
           if (existingParty) {
             setPartyId(existingParty._id);
-            console.log("✅ Partie existante trouvée:", existingParty._id);
           } else {
             // Créer une nouvelle partie
             const newParty = await partiesApi.create({
@@ -201,7 +209,6 @@ export default function ReadStoryPage() {
               story_id: storyId,
             });
             setPartyId(newParty._id);
-            console.log("✅ Nouvelle partie créée:", newParty._id);
           }
         } catch (err) {
           console.error("Erreur lors de la gestion de la partie:", err);
@@ -256,7 +263,6 @@ export default function ReadStoryPage() {
       if (!page.is_ending) {
         const pageChoices = await choicesApi.getByPageId(pageId);
         setChoices(pageChoices);
-        console.log("✅ Choix chargés:", pageChoices.length);
       } else {
         setChoices([]);
         // C'est une page de fin - marquer la partie comme terminée et afficher le modal
@@ -280,11 +286,10 @@ export default function ReadStoryPage() {
   const handleEndingReached = async () => {
     try {
       // Marquer la partie comme terminée
-      if (partyId) {
-        await partiesApi.update(partyId, {
+      if (partyIdRef.current) {
+        await partiesApi.update(partyIdRef.current, {
           end_date: new Date().toISOString(),
         });
-        console.log("✅ Partie marquée comme terminée");
       }
       
       setHasCompletedEnding(true);
