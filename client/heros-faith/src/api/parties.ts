@@ -1,9 +1,17 @@
 import { apiClient } from './client';
 
+// Interface pour l'histoire populée dans une partie
+export interface PartyStory {
+  _id: string;
+  title: string;
+  description?: string;
+  author?: string | { _id: string; username: string };
+}
+
 export interface Party {
   _id: string;
   user_id: string;
-  story_id: string;
+  story_id: string | PartyStory; // Peut être un ID ou un objet populé
   start_date: string;
   end_date?: string;
   path: string[]; // Array of page IDs

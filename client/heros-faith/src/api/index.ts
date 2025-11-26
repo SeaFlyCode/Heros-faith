@@ -7,7 +7,7 @@ export { usersApi, type User, type UserStats, type LoginRequest, type LoginRespo
 export { storiesApi, getAuthorDisplayName, type Story, type StoryAuthor, type CreateStoryRequest, type UpdateStoryRequest } from './stories';
 export { storyPagesApi, type StoryPage, type CreateStoryPageRequest, type UpdateStoryPageRequest } from './storyPages';
 export { storyChoicesApi, type StoryChoice, type CreateStoryChoiceRequest, type UpdateStoryChoiceRequest } from './storyChoices';
-export { partiesApi, type Party, type CreatePartyRequest, type UpdatePartyRequest } from './parties';
+export { partiesApi, type Party, type PartyStory, type CreatePartyRequest, type UpdatePartyRequest } from './parties';
 export { noeudsApi, type Noeud, type CreateNoeudRequest, type UpdateNoeudRequest } from './noeuds';
 export { pagesApi } from './pages';
 export { choicesApi, type Choice, type CreateChoiceRequest, type UpdateChoiceRequest } from './choices';
