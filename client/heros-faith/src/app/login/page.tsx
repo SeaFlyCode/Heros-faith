@@ -42,9 +42,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="relative min-h-screen w-full overflow-hidden flex items-center justify-center bg-black">
       {/* Background animé Prism */}
-      <div className="absolute inset-0 w-full h-full z-0 pointer-events-none opacity-40">
+      <div className="absolute inset-0 w-full h-full z-0 pointer-events-none">
         <Prism
           animationType="rotate"
           timeScale={0.5}
@@ -54,8 +54,10 @@ export default function LoginPage() {
           hueShift={0}
           colorFrequency={1}
           noise={0.08}
-          glow={0.2}
+          glow={0.6}
         />
+        {/* Overlay noir pour renforcer le fond noir */}
+        <div className="absolute inset-0 bg-black/60 pointer-events-none z-10" />
       </div>
 
       {/* Bouton retour modernisé */}

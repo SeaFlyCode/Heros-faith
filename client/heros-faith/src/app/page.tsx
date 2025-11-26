@@ -13,13 +13,13 @@ export default function Home() {
           hueShift={0}
           colorFrequency={1}
           noise={0.08}
-          glow={0.4}
+          glow={0.8}
         />
         {/* Overlay noir pour renforcer le fond noir */}
-        <div className="absolute inset-0 bg-black/80 pointer-events-none z-10" />
+        <div className="absolute inset-0 bg-black/60 pointer-events-none z-10" />
       </div>
       <main className="relative min-h-screen flex items-center justify-center z-10 pt-[100px]">
-        <h1 className="font-bruno text-[6vw] text-red-500 text-center select-none tracking-wide">
+        <h1 className="font-bruno text-[6vw] text-white text-center select-none tracking-wide drop-shadow-lg">
           HERO&apos;S FAITH
         </h1>
       </main>
