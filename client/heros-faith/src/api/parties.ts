@@ -1,26 +1,38 @@
 import { apiClient } from './client';
 
 export interface Party {
-  id: number;
-  userId: number;
-  storyId: number;
-  currentNoeudId?: number;
-  createdAt?: string;
-  updatedAt?: string;
+  _id: string;
+  user_id: string;
+  story_id: string;
+  start_date: string;
+  end_date?: string;
+  path: string[]; // Array of page IDs
+  ending_id?: string;
+}
+
+export interface PartyProgress {
+  partyId: string;
+  storyId: string;
+  visitedPages: number;
+  totalPages: number;
+  progress: number; // Percentage 0-100
+  isCompleted: boolean;
 }
 
 export interface CreatePartyRequest {
-  storyId: number;
-  currentNoeudId?: number;
+  user_id: string;
+  story_id: string;
+  path?: string[];
 }
 
 export interface UpdatePartyRequest {
-  currentNoeudId?: number;
-  storyId?: number;
+  path?: string[];
+  end_date?: string;
+  ending_id?: string;
 }
 
 /**
- * API pour la gestion des parties (sessions de jeu)
+ * API pour la gestion des parties (sessions de lecture)
  */
 export const partiesApi = {
   /**
@@ -40,21 +52,42 @@ export const partiesApi = {
   /**
    * Récupérer une partie par son ID
    */
-  getById: (partyId: number): Promise<Party> => {
+  getById: (partyId: string): Promise<Party> => {
     return apiClient.get<Party>(`/parties/${partyId}`);
+  },
+
+  /**
+   * Récupérer toutes les parties d'un utilisateur
+   */
+  getByUserId: (userId: string): Promise<Party[]> => {
+    return apiClient.get<Party[]>(`/parties/user/${userId}`);
+  },
+
+  /**
+   * Récupérer la partie d'un utilisateur pour une histoire spécifique
+   */
+  getByUserAndStory: (userId: string, storyId: string): Promise<Party> => {
+    return apiClient.get<Party>(`/parties/user/${userId}/story/${storyId}`);
+  },
+
+  /**
+   * Récupérer la progression d'une partie
+   */
+  getProgress: (partyId: string): Promise<PartyProgress> => {
+    return apiClient.get<PartyProgress>(`/parties/${partyId}/progress`);
   },
 
   /**
    * Mettre à jour une partie
    */
-  update: (partyId: number, partyData: UpdatePartyRequest): Promise<Party> => {
+  update: (partyId: string, partyData: UpdatePartyRequest): Promise<Party> => {
     return apiClient.patch<Party>(`/parties/${partyId}`, partyData);
   },
 
   /**
    * Supprimer une partie
    */
-  delete: (partyId: number): Promise<void> => {
+  delete: (partyId: string): Promise<void> => {
     return apiClient.delete<void>(`/parties/${partyId}`);
   },
 };
