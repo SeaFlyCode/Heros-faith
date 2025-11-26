@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PrismTransition from "@/components/PrismTransition";
+import StoryTreeVisualization from "@/components/StoryTreeVisualization";
 import {
   storyPagesApi,
   storyChoicesApi,
@@ -30,18 +31,7 @@ export default function WriteStoryPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
 
-  // Charger l'histoire et ses pages au montage
-  useEffect(() => {
-    if (!storyId) {
-      setError("ID de l'histoire manquant");
-      setIsLoading(false);
-      return;
-    }
-
-    loadStoryAndPages();
-  }, [storyId]);
-
-  const loadStoryAndPages = async () => {
+  const loadStoryAndPages = useCallback(async () => {
     try {
       setIsLoading(true);
       console.log("📚 Chargement de l'histoire:", storyId);
@@ -90,7 +80,18 @@ export default function WriteStoryPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [storyId]);
+
+  // Charger l'histoire et ses pages au montage
+  useEffect(() => {
+    if (!storyId) {
+      setError("ID de l'histoire manquant");
+      setIsLoading(false);
+      return;
+    }
+
+    loadStoryAndPages();
+  }, [storyId, loadStoryAndPages]);
 
   const handleContentChange = async (value: string) => {
     if (!currentPage) return;
@@ -240,8 +241,42 @@ export default function WriteStoryPage() {
     }
   };
 
-  const handleSelectPage = (page: PageWithChoices) => {
-    setCurrentPage(page);
+  // Convertir les pages en nœuds pour la visualisation d'arbre
+  const convertPagesToNodes = () => {
+    return pages.map((page) => {
+      // Trouver le parent de cette page (la page qui a un choix pointant vers celle-ci)
+      let parentId: string | undefined;
+      let parentChoiceId: string | undefined;
+
+      for (const p of pages) {
+        const choice = p.choices.find((c) => c.target_page_id === page._id);
+        if (choice) {
+          parentId = p._id;
+          parentChoiceId = choice._id;
+          break;
+        }
+      }
+
+      return {
+        id: page._id,
+        context: page.content || "Page vide",
+        choices: page.choices.map((c) => ({
+          id: c._id,
+          text: c.text,
+          nextNodeId: c.target_page_id || undefined,
+        })),
+        isEnd: page.is_ending || false,
+        parentId,
+        parentChoiceId,
+      };
+    });
+  };
+
+  const handleNodeSelect = (node: { id: string }) => {
+    const page = pages.find((p) => p._id === node.id);
+    if (page) {
+      setCurrentPage(page);
+    }
   };
 
   const handlePublishStory = async () => {
@@ -349,30 +384,15 @@ export default function WriteStoryPage() {
       </button>
 
       {/* Arborescence en haut à droite */}
-      <div className="absolute top-6 right-6 z-20 bg-white/5 backdrop-blur-2xl rounded-2xl border border-white/10 p-4 w-64 max-h-96 overflow-y-auto">
-        <h3 className="text-white font-semibold text-sm mb-3">
-          Arborescence ({pages.length} page{pages.length > 1 ? 's' : ''})
-        </h3>
-        <div className="flex flex-col gap-2">
-          {pages.map((page, index) => (
-            <div
-              key={page._id}
-              className={`flex items-center gap-2 p-2 rounded-lg transition-all cursor-pointer ${
-                currentPage?._id === page._id
-                  ? "bg-cyan-500/30 border border-cyan-400/50"
-                  : "bg-white/5 hover:bg-white/10"
-              }`}
-              onClick={() => handleSelectPage(page)}
-            >
-              <div className="w-3 h-3 rounded-full bg-cyan-400"></div>
-              <span className="text-white text-xs flex-1">Page {index + 1}</span>
-              {page.is_ending && (
-                <span className="text-xs text-green-400 font-semibold">Fin</span>
-              )}
-            </div>
-          ))}
+      {currentPage && pages.length > 0 && (
+        <div className="absolute top-6 right-6 z-20">
+          <StoryTreeVisualization
+            nodes={convertPagesToNodes()}
+            currentNode={convertPagesToNodes().find((n) => n.id === currentPage._id)!}
+            onNodeSelect={handleNodeSelect}
+          />
         </div>
-      </div>
+      )}
 
       {/* Contenu principal */}
       <main className="relative z-10 min-h-screen pt-32 pb-16 px-8">
@@ -483,7 +503,7 @@ export default function WriteStoryPage() {
 
                       {currentPage.choices.length === 0 ? (
                         <p className="text-white/40 text-sm text-center py-4">
-                          Aucun choix ajouté. Cliquez sur "Ajouter un choix" pour en créer un.
+                          Aucun choix ajouté. Cliquez sur &quot;Ajouter un choix&quot; pour en créer un.
                         </p>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -542,7 +562,7 @@ export default function WriteStoryPage() {
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
-                      C'est une fin
+                      C&apos;est une fin
                     </div>
                   )}
                 </div>
