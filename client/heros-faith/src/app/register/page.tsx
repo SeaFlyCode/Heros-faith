@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Prism from "@/components/Prism";
 import { usersApi, type ApiError } from "@/api";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { login: authLogin } = useAuth();
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -37,6 +39,14 @@ export default function RegisterPage() {
       return;
     }
 
+    // Vérifier que le username n'est pas un email
+    if (username.includes('@')) {
+      console.log('❌ Le nom d\'utilisateur ne peut pas être un email');
+      setError("Le nom d'utilisateur ne peut pas être une adresse email. Utilisez un pseudo.");
+      setIsLoading(false);
+      return;
+    }
+
     if (password !== confirmPassword) {
       console.log('❌ Les mots de passe ne correspondent pas');
       setError("Les mots de passe ne correspondent pas.");
@@ -56,7 +66,7 @@ export default function RegisterPage() {
         email,
         username,
         password,
-        role: 'user'
+        role: 'user' as const
       };
       console.log('📤 Envoi des données d\'inscription:', { ...userData, password: '***' });
 
@@ -68,12 +78,12 @@ export default function RegisterPage() {
       const loginData = await usersApi.login({ email, password });
       console.log('✅ Connexion réussie:', { token: loginData.token.substring(0, 20) + '...', user: loginData.user });
 
-      localStorage.setItem("token", loginData.token);
-      localStorage.setItem("user", JSON.stringify(loginData.user));
+      // Utiliser le hook d'authentification
+      authLogin(loginData.token, loginData.user);
 
-      // Redirection
-      console.log('➡️ Redirection vers /dashboard');
-      router.push("/dashboard");
+      // Redirection vers la page d'accueil
+      console.log('➡️ Redirection vers /');
+      router.push("/");
     } catch (err) {
       const apiError = err as ApiError;
       console.error('❌ Erreur lors de l\'inscription:', apiError);
