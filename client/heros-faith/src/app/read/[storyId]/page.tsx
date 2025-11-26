@@ -62,7 +62,7 @@ const RatingModal = ({
 
         {/* Titre */}
         <h2 className="text-2xl font-bold text-white text-center mb-2">
-          Félicitations ! 🎉
+          Félicitations !
         </h2>
         <p className="text-white/60 text-center mb-6">
           Vous avez terminé <span className="text-white font-medium">"{storyTitle}"</span>
