@@ -39,6 +39,8 @@ const Prism: React.FC<PrismProps> = ({
   timeScale = 0.5
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const programRef = useRef<Program | null>(null);
+  const glRef = useRef<WebGLRenderingContext | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -79,7 +81,8 @@ const Prism: React.FC<PrismProps> = ({
       inset: '0',
       width: '100%',
       height: '100%',
-      display: 'block'
+      display: 'block',
+      transition: 'all 1s ease-out'
     } as Partial<CSSStyleDeclaration>);
     container.appendChild(gl.canvas);
 
@@ -239,6 +242,11 @@ const Prism: React.FC<PrismProps> = ({
         uTimeScale: { value: TS }
       }
     });
+
+    // Sauvegarder les références pour les mises à jour dynamiques
+    programRef.current = program;
+    glRef.current = gl;
+
     const mesh = new Mesh(gl, { geometry, program });
 
     const resize = () => {
@@ -434,24 +442,37 @@ const Prism: React.FC<PrismProps> = ({
       }
       if (gl.canvas.parentElement === container) container.removeChild(gl.canvas);
     };
-  }, [
-    height,
-    baseWidth,
-    animationType,
-    glow,
-    noise,
-    offset?.x,
-    offset?.y,
-    scale,
-    transparent,
-    hueShift,
-    colorFrequency,
-    timeScale,
-    hoverStrength,
-    inertia,
-    bloom,
-    suspendWhenOffscreen
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [animationType, transparent, suspendWhenOffscreen]); // Ne recréer que si ces props changent
+
+  // Effet secondaire pour mettre à jour les uniforms dynamiquement
+  useEffect(() => {
+    const program = programRef.current;
+    const gl = glRef.current;
+    if (!program || !gl) return;
+
+    const H = Math.max(0.001, height);
+    const BW = Math.max(0.001, baseWidth);
+    const BASE_HALF = BW * 0.5;
+    const SCALE = Math.max(0.001, scale);
+
+    // Mettre à jour les uniforms qui dépendent des props
+    program.uniforms.uHeight.value = H;
+    program.uniforms.uBaseHalf.value = BASE_HALF;
+    program.uniforms.uGlow.value = Math.max(0.0, glow);
+    program.uniforms.uNoise.value = Math.max(0.0, noise);
+    program.uniforms.uScale.value = SCALE;
+    program.uniforms.uHueShift.value = hueShift || 0;
+    program.uniforms.uColorFreq.value = Math.max(0.0, colorFrequency || 1);
+    program.uniforms.uBloom.value = Math.max(0.0, bloom || 1);
+    program.uniforms.uCenterShift.value = H * 0.25;
+    program.uniforms.uInvBaseHalf.value = 1 / BASE_HALF;
+    program.uniforms.uInvHeight.value = 1 / H;
+    program.uniforms.uMinAxis.value = Math.min(BASE_HALF, H);
+    program.uniforms.uPxScale.value = 1 / ((gl.drawingBufferHeight || 1) * 0.1 * SCALE);
+    program.uniforms.uTimeScale.value = Math.max(0, timeScale || 1);
+    program.uniforms.uSaturation.value = transparent ? 1.5 : 1;
+  }, [height, baseWidth, scale, glow, noise, hueShift, colorFrequency, bloom, timeScale, transparent]);
 
   return <div className="w-full h-full relative" ref={containerRef} />;
 };
