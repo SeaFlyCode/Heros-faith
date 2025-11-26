@@ -29,13 +29,13 @@ export default function NavBar() {
                 {/* Menu Desktop (toujours affiché) */}
                 <div className="flex gap-x-4">
                     <Link
-                        href="/about"
+                        href="/stories"
                         className="inline-block font-medium font-montserrat no-underline hover:text-yellow-400 transition-colors text-white drop-shadow"
                     >
                         Mes histoires
                     </Link>
                     <Link
-                        href="/stories"
+                        href="/read"
                         className="inline-block font-medium font-montserrat no-underline hover:text-yellow-400 transition-colors text-white drop-shadow"
                     >
                         Lire une histoire
