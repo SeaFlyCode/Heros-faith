@@ -21,43 +21,62 @@ export default function RegisterPage() {
     setError("");
     setIsLoading(true);
 
+    console.log('📝 Début de l\'inscription...');
+    console.log('Données du formulaire:', { email, username, hasPassword: !!password, hasConfirmPassword: !!confirmPassword, role: 'user' });
+
     // Validations
     if (!email || !username || !password || !confirmPassword) {
+      const missing = [];
+      if (!email) missing.push('email');
+      if (!username) missing.push('username');
+      if (!password) missing.push('password');
+      if (!confirmPassword) missing.push('confirmPassword');
+      console.log('❌ Champs manquants:', missing);
       setError("Veuillez remplir tous les champs.");
       setIsLoading(false);
       return;
     }
 
     if (password !== confirmPassword) {
+      console.log('❌ Les mots de passe ne correspondent pas');
       setError("Les mots de passe ne correspondent pas.");
       setIsLoading(false);
       return;
     }
 
     if (password.length < 6) {
+      console.log('❌ Mot de passe trop court:', password.length, 'caractères');
       setError("Le mot de passe doit contenir au moins 6 caractères.");
       setIsLoading(false);
       return;
     }
 
     try {
-      await usersApi.create({
+      const userData = {
         email,
         username,
         password,
         role: 'user'
-      });
+      };
+      console.log('📤 Envoi des données d\'inscription:', { ...userData, password: '***' });
+
+      const response = await usersApi.create(userData);
+      console.log('✅ Utilisateur créé avec succès:', response);
 
       // Connexion automatique après inscription
+      console.log('🔐 Connexion automatique...');
       const loginData = await usersApi.login({ email, password });
+      console.log('✅ Connexion réussie:', { token: loginData.token.substring(0, 20) + '...', user: loginData.user });
 
       localStorage.setItem("token", loginData.token);
       localStorage.setItem("user", JSON.stringify(loginData.user));
 
       // Redirection
+      console.log('➡️ Redirection vers /dashboard');
       router.push("/dashboard");
     } catch (err) {
       const apiError = err as ApiError;
+      console.error('❌ Erreur lors de l\'inscription:', apiError);
       setError(apiError.message || "Erreur lors de l'inscription");
     } finally {
       setIsLoading(false);
@@ -128,48 +147,67 @@ export default function RegisterPage() {
               )}
 
               {/* Adresse e-mail */}
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium text-white/80 pl-1">
-                  Adresse e-mail
-                </label>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                    </svg>
+                  </div>
+                  <label htmlFor="email" className="text-lg font-semibold text-white">
+                    Email
+                  </label>
+                </div>
                 <input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="exemple@email.com"
-                  className="w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white text-base placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 hover:bg-white/10"
+                  className="w-full px-5 py-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl text-white text-base placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 hover:bg-white/10"
                   autoComplete="email"
                   disabled={isLoading}
                   required
                 />
               </div>
 
-              {/* Nom */}
-              <div className="space-y-2">
-                <label htmlFor="username" className="text-sm font-medium text-white/80 pl-1">
-                  Nom
-                </label>
+              {/* Nom d'utilisateur */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  <label htmlFor="username" className="text-lg font-semibold text-white">
+                    Nom d&apos;utilisateur
+                  </label>
+                </div>
                 <input
                   id="username"
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Votre nom d'utilisateur"
-                  className="w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white text-base placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 hover:bg-white/10"
+                  className="w-full px-5 py-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl text-white text-base placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 hover:bg-white/10"
                   autoComplete="username"
                   disabled={isLoading}
                   required
                 />
               </div>
 
-              {/* Prénom - optionnel selon le wireframe, j'utilise juste username */}
-
               {/* Mot de passe */}
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium text-white/80 pl-1">
-                  Mot de passe
-                </label>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                  <label htmlFor="password" className="text-lg font-semibold text-white">
+                    Mot de passe
+                  </label>
+                </div>
                 <div className="relative">
                   <input
                     id="password"
@@ -177,7 +215,7 @@ export default function RegisterPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white text-base placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 pr-12 hover:bg-white/10"
+                    className="w-full px-5 py-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl text-white text-base placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 pr-14 hover:bg-white/10"
                     autoComplete="new-password"
                     disabled={isLoading}
                     required
@@ -185,7 +223,7 @@ export default function RegisterPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/90 transition-colors p-1"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/90 transition-colors p-1"
                     tabIndex={-1}
                     aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
                   >
@@ -204,10 +242,17 @@ export default function RegisterPage() {
               </div>
 
               {/* Confirmer mot de passe */}
-              <div className="space-y-2">
-                <label htmlFor="confirmPassword" className="text-sm font-medium text-white/80 pl-1">
-                  Confirmer mot de passe
-                </label>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </div>
+                  <label htmlFor="confirmPassword" className="text-lg font-semibold text-white">
+                    Confirmer mot de passe
+                  </label>
+                </div>
                 <div className="relative">
                   <input
                     id="confirmPassword"
@@ -215,7 +260,7 @@ export default function RegisterPage() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white text-base placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 pr-12 hover:bg-white/10"
+                    className="w-full px-5 py-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl text-white text-base placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 pr-14 hover:bg-white/10"
                     autoComplete="new-password"
                     disabled={isLoading}
                     required
@@ -223,7 +268,7 @@ export default function RegisterPage() {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/90 transition-colors p-1"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/90 transition-colors p-1"
                     tabIndex={-1}
                     aria-label={showConfirmPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
                   >
@@ -245,20 +290,25 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="group relative w-full bg-white hover:bg-white/95 text-gray-900 font-bold py-4 rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 overflow-hidden mt-6"
+                className="group relative w-full bg-white hover:bg-white/95 text-gray-900 font-bold py-5 rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 overflow-hidden"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 via-pink-400/20 to-purple-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 <div className="relative flex items-center justify-center gap-3">
                   {isLoading ? (
                     <>
-                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      <span className="text-base">Inscription en cours...</span>
+                      <span className="text-lg">Inscription en cours...</span>
                     </>
                   ) : (
-                    <span className="text-base">S&apos;inscrire</span>
+                    <>
+                      <span className="text-lg">S&apos;inscrire</span>
+                      <svg className="w-6 h-6 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </>
                   )}
                 </div>
               </button>
