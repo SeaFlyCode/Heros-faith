@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { Choice } from '../models/choice.js';
+import { Choice } from '../models/choice.ts';
 
 export async function createChoice(req: Request, res: Response, next: NextFunction) {
   try {

@@ -1,22 +1,22 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middlewares/authMiddleware.js';
-import { roleMiddleware } from '../middlewares/roleMiddleware.js';
+import { authMiddleware } from '../middlewares/authMiddleware.ts';
+import { roleMiddleware } from '../middlewares/roleMiddleware.ts';
 import {
   createRating,
   getAllRatings,
   getRatingById,
   updateRating,
   deleteRating
-} from '../controllers/ratingControllers.js';
+} from '../controllers/ratingControllers.ts';
 
 const router = Router();
 router.use(authMiddleware);
 
-router.post('/', createRating);
+router.post('/', roleMiddleware('user'), createRating);
 router.get('/', getAllRatings);
 router.get('/:ratingId', getRatingById);
-router.patch('/:ratingId', updateRating);
-router.delete('/:ratingId', roleMiddleware('admin'), deleteRating);
+router.patch('/:ratingId', roleMiddleware('user'), updateRating);
+router.delete('/:ratingId', roleMiddleware('user'), deleteRating);
 
 export default router;
 

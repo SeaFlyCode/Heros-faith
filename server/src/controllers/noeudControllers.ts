@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { Noeud } from '../models/noeud.js';
+import { Noeud } from '../models/noeud.ts';
 
 export async function createNoeud(req: Request, res: Response, next: NextFunction) {
   try {

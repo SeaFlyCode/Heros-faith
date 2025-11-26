@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { Rating } from '../models/rating.js';
+import { Rating } from '../models/rating.ts';
 
 export async function createRating(req: Request, res: Response, next: NextFunction) {
   try {
