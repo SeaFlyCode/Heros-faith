@@ -26,7 +26,9 @@ export default function WriteStoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [storyTitle, setStoryTitle] = useState("");
+  const [storyStatus, setStoryStatus] = useState<'draft' | 'published'>('draft');
   const [isSaving, setIsSaving] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   // Charger l'histoire et ses pages au montage
   useEffect(() => {
@@ -47,6 +49,7 @@ export default function WriteStoryPage() {
       // Charger les infos de l'histoire
       const story = await storiesApi.getById(storyId!);
       setStoryTitle(story.title);
+      setStoryStatus(story.status);
 
       // Charger toutes les pages de cette histoire
       const allPages = await storyPagesApi.getByStoryId(storyId!);
@@ -241,6 +244,61 @@ export default function WriteStoryPage() {
     setCurrentPage(page);
   };
 
+  const handlePublishStory = async () => {
+    if (!storyId) return;
+
+    // Vérifier qu'il y a au moins une page
+    if (pages.length === 0) {
+      setError("Vous devez créer au moins une page avant de publier l'histoire");
+      return;
+    }
+
+    // Vérifier qu'il y a au moins une fin
+    const hasEnding = pages.some(p => p.is_ending);
+    if (!hasEnding) {
+      setError("Vous devez marquer au moins une page comme fin avant de publier");
+      return;
+    }
+
+    try {
+      setIsPublishing(true);
+      setError("");
+
+      await storiesApi.update(storyId, { status: 'published' });
+      setStoryStatus('published');
+
+      console.log("✅ Histoire publiée avec succès !");
+      alert("🎉 Votre histoire a été publiée avec succès ! Elle est maintenant visible dans la section 'Lire les histoires'.");
+    } catch (err) {
+      const apiError = err as ApiError;
+      console.error("❌ Erreur lors de la publication:", apiError);
+      setError(apiError.message || "Erreur lors de la publication de l'histoire");
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const handleUnpublishStory = async () => {
+    if (!storyId) return;
+
+    try {
+      setIsPublishing(true);
+      setError("");
+
+      await storiesApi.update(storyId, { status: 'draft' });
+      setStoryStatus('draft');
+
+      console.log("✅ Histoire remise en brouillon");
+      alert("📝 Votre histoire a été remise en brouillon.");
+    } catch (err) {
+      const apiError = err as ApiError;
+      console.error("❌ Erreur:", apiError);
+      setError(apiError.message || "Erreur lors de la modification du statut");
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-black">
@@ -323,6 +381,50 @@ export default function WriteStoryPage() {
           <h1 className="text-3xl sm:text-4xl font-bold text-white text-center mb-2 font-montserrat tracking-tight">
             {storyTitle}
           </h1>
+
+          {/* Badge de statut et bouton publier */}
+          <div className="flex items-center justify-center gap-4 mb-4">
+            {storyStatus === 'draft' ? (
+              <>
+                <span className="px-3 py-1.5 bg-orange-500/20 border border-orange-400/50 text-orange-300 text-sm rounded-full font-semibold flex items-center gap-2">
+                  📝 Brouillon
+                </span>
+                <button
+                  onClick={handlePublishStory}
+                  disabled={isPublishing || pages.length === 0}
+                  className="px-4 py-1.5 bg-green-500/20 hover:bg-green-500/30 border border-green-400/50 text-green-300 text-sm rounded-full font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isPublishing ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Publication...
+                    </>
+                  ) : (
+                    <>
+                      ✨ Publier l'histoire
+                    </>
+                  )}
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="px-3 py-1.5 bg-green-500/20 border border-green-400/50 text-green-300 text-sm rounded-full font-semibold flex items-center gap-2">
+                  ✅ Publiée
+                </span>
+                <button
+                  onClick={handleUnpublishStory}
+                  disabled={isPublishing}
+                  className="px-4 py-1.5 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-400/50 text-orange-300 text-sm rounded-full font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isPublishing ? "Modification..." : "📝 Repasser en brouillon"}
+                </button>
+              </>
+            )}
+          </div>
+
           <p className="text-white/60 text-center mb-8">
             {isSaving ? "Sauvegarde en cours..." : "Créez votre histoire interactive"}
           </p>

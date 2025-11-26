@@ -60,15 +60,28 @@ export async function getStoryById(req: Request, res: Response, next: NextFuncti
     }
 }
 
-export async function updateStory(req: Request, res: Response, next: NextFunction) {
+export async function updateStory(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
         const { storyId } = req.params;
         const updates = req.body;
-        const story = await Story.findByIdAndUpdate(storyId, updates, { new: true });
+
+        // Récupérer l'histoire
+        const story = await Story.findById(storyId);
         if (!story) {
             return res.status(404).json({ message: 'Story not found' });
         }
-        res.json(story);
+
+        // Vérifier que l'utilisateur est l'auteur de l'histoire
+        const userId = (req.user as JwtPayload)?.userId;
+        const userRole = (req.user as JwtPayload)?.role;
+
+        if (story.author.toString() !== userId && userRole !== 'admin') {
+            return res.status(403).json({ message: 'Vous n\'êtes pas autorisé à modifier cette histoire' });
+        }
+
+        // Mettre à jour l'histoire
+        const updatedStory = await Story.findByIdAndUpdate(storyId, updates, { new: true });
+        res.json(updatedStory);
     } catch (err) {
         next(err);
     }

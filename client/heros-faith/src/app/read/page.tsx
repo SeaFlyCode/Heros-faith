@@ -164,15 +164,16 @@ export default function ReadPage() {
       setIsLoading(true);
       console.log("📚 Chargement des histoires...");
 
-      // 1. Charger toutes les histoires publiées
+      // 1. Charger uniquement les histoires publiées
       const allStories = await storiesApi.getAll();
-      const published = allStories.filter(story => story.status === 'published');
+      const publishedStories = allStories.filter(story => story.status === 'published');
 
-      console.log("✅ Histoires publiées:", published.length);
+      console.log("✅ Histoires publiées:", publishedStories.length);
+      console.log("📊 Total histoires:", allStories.length, "dont", allStories.length - publishedStories.length, "brouillons");
 
       // 2. Enrichir les histoires avec les ratings
       const enrichedStories = await Promise.all(
-        published.map(async (story) => {
+        publishedStories.map(async (story) => {
           try {
             const ratingData = await ratingsApi.getStoryAverage(story._id);
             return {

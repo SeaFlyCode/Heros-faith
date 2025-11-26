@@ -19,6 +19,7 @@ export interface CreateStoryRequest {
 export interface UpdateStoryRequest {
   title?: string;
   description?: string;
+  status?: 'draft' | 'published';
 }
 
 /**
