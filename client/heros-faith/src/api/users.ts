@@ -1,7 +1,7 @@
 import { apiClient } from './client';
 
 export interface User {
-  id: number;
+  _id: string;
   username: string;
   email: string;
   role: 'user' | 'creator' | 'admin';
@@ -30,6 +30,7 @@ export interface UpdateUserRequest {
   username?: string;
   email?: string;
   password?: string;
+  currentPassword?: string;
   role?: 'user' | 'creator' | 'admin';
 }
 
@@ -61,21 +62,21 @@ export const usersApi = {
   /**
    * Récupérer un utilisateur par son ID
    */
-  getById: (userId: number): Promise<User> => {
+  getById: (userId: string): Promise<User> => {
     return apiClient.get<User>(`/users/${userId}`);
   },
 
   /**
-   * Mettre à jour un utilisateur (admin uniquement)
+   * Mettre à jour un utilisateur
    */
-  update: (userId: number, userData: UpdateUserRequest): Promise<User> => {
+  update: (userId: string, userData: UpdateUserRequest): Promise<User> => {
     return apiClient.patch<User>(`/users/${userId}`, userData);
   },
 
   /**
    * Supprimer un utilisateur (admin uniquement)
    */
-  delete: (userId: number): Promise<void> => {
+  delete: (userId: string): Promise<void> => {
     return apiClient.delete<void>(`/users/${userId}`);
   },
 };
