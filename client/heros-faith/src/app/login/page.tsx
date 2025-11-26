@@ -20,7 +20,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden flex items-center justify-center ">
+    <div className="relative min-h-screen w-full overflow-hidden flex items-center justify-center bg-black">
       {/* Background animé Prism */}
       <div className="absolute inset-0 w-full h-full z-0 pointer-events-none">
         <Prism
@@ -34,6 +34,8 @@ export default function LoginPage() {
           noise={0.08}
           glow={0.2}
         />
+        {/* Overlay noir pour renforcer le fond noir */}
+        <div className="absolute inset-0 bg-black/70 pointer-events-none z-10" />
       </div>
       {/* Bouton retour */}
       <button
@@ -60,10 +62,10 @@ export default function LoginPage() {
             onSubmit={handleSubmit}
             className="flex flex-col justify-start gap-6 px-2"
           >
-            <h2 className="text-2xl font-bold text-center mb-8 mt-0">Connexion</h2>
+            <h2 className="text-2xl font-bold text-center mb-8 mt-0 text-white">Connexion</h2>
             {error && <div className="text-red-500 text-sm text-center">{error}</div>}
             <div className="flex flex-col gap-2">
-              <label htmlFor="email" className="font-medium">
+              <label htmlFor="email" className="font-medium text-white">
                 Email
               </label>
               <input
@@ -71,13 +73,13 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400 bg-white/80"
+                className="border border-white/20 rounded px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-400 bg-black/40 text-white placeholder-gray-400"
                 autoComplete="email"
                 required
               />
             </div>
             <div className="flex flex-col gap-2">
-              <label htmlFor="password" className="font-medium">
+              <label htmlFor="password" className="font-medium text-white">
                 Mot de passe
               </label>
               <input
@@ -85,14 +87,14 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400 bg-white/80"
+                className="border border-white/20 rounded px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-400 bg-black/40 text-white placeholder-gray-400"
                 autoComplete="current-password"
                 required
               />
             </div>
             <button
               type="submit"
-              className="bg-neutral-900 hover:bg-yellow-400 text-white font-semibold py-2 rounded transition-colors shadow-lg text-lg tracking-wide border border-neutral-700"
+              className="bg-neutral-900 hover:bg-yellow-400 hover:text-black text-white font-semibold py-3 rounded transition-colors shadow-lg text-lg tracking-wide border border-neutral-700"
             >
               Se connecter
             </button>

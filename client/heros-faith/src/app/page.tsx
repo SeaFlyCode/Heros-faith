@@ -2,7 +2,7 @@ import Prism from "@/components/Prism";
 
 export default function Home() {
   return (
-    <div className="relative min-h-screen w-full overflow-hidden">
+    <div className="relative min-h-screen w-full overflow-hidden bg-black">
       <div className="absolute inset-0 w-full h-full z-0 pointer-events-none">
         <Prism
           animationType="rotate"
@@ -20,7 +20,7 @@ export default function Home() {
       </div>
       <main className="relative min-h-screen flex items-center justify-center z-10 pt-[100px]">
         <h1 className="font-bruno text-[6vw] text-red-500 text-center select-none tracking-wide">
-          HERO'S FAITH
+          HERO&apos;S FAITH
         </h1>
       </main>
     </div>
