@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import GlassSurface from "@/components/GlassSurface";
 import Prism from "@/components/Prism";
+import { usersApi, type ApiError } from "@/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,27 +26,17 @@ export default function LoginPage() {
     }
 
     try {
-      // Appel API à implémenter
-      const response = await fetch("http://localhost:3000/api/users/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+      const data = await usersApi.login({ email, password });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || "Erreur de connexion");
-      }
-
-      const data = await response.json();
       // Stocker le token
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
       // Redirection
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message || "Erreur lors de la connexion");
+    } catch (err) {
+      const apiError = err as ApiError;
+      setError(apiError.message || "Erreur lors de la connexion");
     } finally {
       setIsLoading(false);
     }
