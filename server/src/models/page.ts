@@ -10,7 +10,7 @@ export interface IPage extends Document {
 
 const PageSchema: Schema<IPage> = new Schema<IPage>({
   story_id: { type: Schema.Types.ObjectId, ref: 'Story', required: true },
-  content: { type: String, required: true },
+  content: { type: String, required: false, default: '' },
   is_ending: { type: Boolean, default: false },
   ending_label: { type: String },
   illustration: { type: String }

@@ -8,12 +8,14 @@ import {
   updatePage,
   deletePage
 } from '../controllers/pageControllers.ts';
+import { getChoicesByPageId } from '../controllers/choiceControllers.ts';
 
 const router = Router();
 router.use(authMiddleware);
 
 router.post('/', createPage);
 router.get('/', getAllPages);
+router.get('/:pageId/choices', getChoicesByPageId);
 router.get('/:pageId', getPageById);
 router.patch('/:pageId', updatePage);
 router.delete('/:pageId', roleMiddleware('admin'), deletePage);

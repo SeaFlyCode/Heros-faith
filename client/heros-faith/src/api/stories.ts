@@ -1,10 +1,11 @@
 import { apiClient } from './client';
 
 export interface Story {
-  id: number;
+  _id: string;
   title: string;
   description?: string;
-  authorId: number;
+  author: string;
+  status: 'draft' | 'published';
   createdAt?: string;
   updatedAt?: string;
 }
@@ -12,6 +13,7 @@ export interface Story {
 export interface CreateStoryRequest {
   title: string;
   description?: string;
+  status?: 'draft' | 'published';
 }
 
 export interface UpdateStoryRequest {
@@ -40,21 +42,21 @@ export const storiesApi = {
   /**
    * Récupérer une histoire par son ID
    */
-  getById: (storyId: number): Promise<Story> => {
+  getById: (storyId: string): Promise<Story> => {
     return apiClient.get<Story>(`/stories/${storyId}`);
   },
 
   /**
-   * Mettre à jour une histoire (admin uniquement)
+   * Mettre à jour une histoire
    */
-  update: (storyId: number, storyData: UpdateStoryRequest): Promise<Story> => {
+  update: (storyId: string, storyData: UpdateStoryRequest): Promise<Story> => {
     return apiClient.patch<Story>(`/stories/${storyId}`, storyData);
   },
 
   /**
-   * Supprimer une histoire (admin uniquement)
+   * Supprimer une histoire
    */
-  delete: (storyId: number): Promise<void> => {
+  delete: (storyId: string): Promise<void> => {
     return apiClient.delete<void>(`/stories/${storyId}`);
   },
 };

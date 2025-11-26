@@ -1,90 +1,261 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import PrismTransition from "@/components/PrismTransition";
+import {
+  storyPagesApi,
+  storyChoicesApi,
+  storiesApi,
+  type StoryPage,
+  type StoryChoice,
+  type ApiError
+} from "@/api";
 
-interface StoryNode {
-  id: string;
-  context: string;
-  choices: Choice[];
-  isEnd: boolean;
-}
-
-interface Choice {
-  id: string;
-  text: string;
-  nextNodeId?: string;
+interface PageWithChoices extends StoryPage {
+  choices: StoryChoice[];
 }
 
 export default function WriteStoryPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const storyId = searchParams.get("storyId");
 
-  const [currentNode, setCurrentNode] = useState<StoryNode>({
-    id: "1",
-    context: "",
-    choices: [
-      { id: "c1", text: "", nextNodeId: undefined },
-      { id: "c2", text: "", nextNodeId: undefined },
-    ],
-    isEnd: false,
-  });
+  const [pages, setPages] = useState<PageWithChoices[]>([]);
+  const [currentPage, setCurrentPage] = useState<PageWithChoices | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [storyTitle, setStoryTitle] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
+  // Charger l'histoire et ses pages au montage
+  useEffect(() => {
+    if (!storyId) {
+      setError("ID de l'histoire manquant");
+      setIsLoading(false);
+      return;
+    }
 
-  const [nodes, setNodes] = useState<StoryNode[]>([
-    {
-      id: "1",
-      context: "",
-      choices: [
-        { id: "c1", text: "", nextNodeId: undefined },
-        { id: "c2", text: "", nextNodeId: undefined },
-      ],
-      isEnd: false,
-    },
-  ]);
+    loadStoryAndPages();
+  }, [storyId]);
 
-  const handleContextChange = (value: string) => {
-    setCurrentNode({ ...currentNode, context: value });
+  const loadStoryAndPages = async () => {
+    try {
+      setIsLoading(true);
+      console.log("📚 Chargement de l'histoire:", storyId);
+
+      // Charger les infos de l'histoire
+      const story = await storiesApi.getById(storyId!);
+      setStoryTitle(story.title);
+
+      // Charger toutes les pages de cette histoire
+      const allPages = await storyPagesApi.getByStoryId(storyId!);
+      console.log("✅ Pages récupérées:", allPages);
+
+      // Si aucune page n'existe, créer la première
+      if (allPages.length === 0) {
+        console.log("📝 Création de la première page...");
+        const firstPage = await storyPagesApi.create({
+          story_id: storyId!,
+          content: "",
+          is_ending: false,
+        });
+
+        const pageWithChoices: PageWithChoices = {
+          ...firstPage,
+          choices: []
+        };
+
+        setPages([pageWithChoices]);
+        setCurrentPage(pageWithChoices);
+      } else {
+        // Charger les choix pour chaque page
+        const pagesWithChoices = await Promise.all(
+          allPages.map(async (page) => {
+            const choices = await storyChoicesApi.getByPageId(page._id);
+            return { ...page, choices };
+          })
+        );
+
+        setPages(pagesWithChoices);
+        setCurrentPage(pagesWithChoices[0]);
+      }
+    } catch (err) {
+      const apiError = err as ApiError;
+      console.error("❌ Erreur lors du chargement:", apiError);
+      setError(apiError.message || "Erreur lors du chargement de l'histoire");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleContentChange = async (value: string) => {
+    if (!currentPage) return;
+
+    setCurrentPage({ ...currentPage, content: value });
+  };
+
+  const handleContentBlur = async () => {
+    if (!currentPage) return;
+
+    try {
+      setIsSaving(true);
+      await storyPagesApi.update(currentPage._id, {
+        content: currentPage.content,
+      });
+      console.log("✅ Page sauvegardée");
+
+      // Mettre à jour la liste des pages
+      setPages(pages.map(p => p._id === currentPage._id ? currentPage : p));
+    } catch (err) {
+      const apiError = err as ApiError;
+      console.error("❌ Erreur lors de la sauvegarde:", apiError);
+      setError("Erreur lors de la sauvegarde");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAddChoice = () => {
+    if (!currentPage || currentPage.is_ending) return;
+
+    // Ajouter un choix temporaire (non sauvegardé)
+    const tempChoice: StoryChoice = {
+      _id: `temp-${Date.now()}`,
+      page_id: currentPage._id,
+      text: "",
+      target_page_id: "",
+    };
+
+    setCurrentPage({
+      ...currentPage,
+      choices: [...currentPage.choices, tempChoice]
+    });
   };
 
   const handleChoiceChange = (choiceId: string, value: string) => {
-    const updatedChoices = currentNode.choices.map((choice) =>
-      choice.id === choiceId ? { ...choice, text: value } : choice
+    if (!currentPage) return;
+
+    setCurrentPage({
+      ...currentPage,
+      choices: currentPage.choices.map(c =>
+        c._id === choiceId ? { ...c, text: value } : c
+      )
+    });
+  };
+
+  const handleDevelopChoice = async (choiceId: string) => {
+    if (!currentPage || !storyId) return;
+
+    const choice = currentPage.choices.find(c => c._id === choiceId);
+    if (!choice || !choice.text.trim()) {
+      setError("Le texte du choix ne peut pas être vide");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+
+      // 1. Créer une nouvelle page cible
+      const newPage = await storyPagesApi.create({
+        story_id: storyId,
+        content: "",
+        is_ending: false,
+      });
+
+      console.log("✅ Nouvelle page créée:", newPage);
+
+      // 2. Créer ou mettre à jour le choix avec la page cible
+      let savedChoice: StoryChoice;
+      if (choice._id.startsWith('temp-')) {
+        // Créer le choix
+        savedChoice = await storyChoicesApi.create({
+          page_id: currentPage._id,
+          text: choice.text,
+          target_page_id: newPage._id,
+        });
+      } else {
+        // Mettre à jour le choix existant
+        savedChoice = await storyChoicesApi.update(choice._id, {
+          text: choice.text,
+          target_page_id: newPage._id,
+        });
+      }
+
+      console.log("✅ Choix sauvegardé:", savedChoice);
+
+      // 3. Ajouter la nouvelle page à la liste
+      const newPageWithChoices: PageWithChoices = {
+        ...newPage,
+        choices: []
+      };
+
+      setPages([...pages, newPageWithChoices]);
+
+      // 4. Mettre à jour la page actuelle avec le choix sauvegardé
+      const updatedCurrentPage = {
+        ...currentPage,
+        choices: currentPage.choices.map(c =>
+          c._id === choiceId ? savedChoice : c
+        )
+      };
+      setCurrentPage(updatedCurrentPage);
+      setPages(pages.map(p => p._id === currentPage._id ? updatedCurrentPage : p));
+
+      // 5. Naviguer vers la nouvelle page
+      setCurrentPage(newPageWithChoices);
+    } catch (err) {
+      const apiError = err as ApiError;
+      console.error("❌ Erreur lors du développement:", apiError);
+      setError(apiError.message || "Erreur lors du développement du choix");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSetAsEnd = async () => {
+    if (!currentPage) return;
+
+    try {
+      setIsSaving(true);
+      await storyPagesApi.update(currentPage._id, {
+        is_ending: true,
+        ending_label: "Fin"
+      });
+
+      const updatedPage = { ...currentPage, is_ending: true, ending_label: "Fin", choices: [] };
+      setCurrentPage(updatedPage);
+      setPages(pages.map(p => p._id === currentPage._id ? updatedPage : p));
+
+      console.log("✅ Page marquée comme fin");
+    } catch (err) {
+      const apiError = err as ApiError;
+      console.error("❌ Erreur:", apiError);
+      setError("Erreur lors de la sauvegarde");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSelectPage = (page: PageWithChoices) => {
+    setCurrentPage(page);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-black">
+        <div className="text-white text-xl">Chargement...</div>
+      </div>
     );
-    setCurrentNode({ ...currentNode, choices: updatedChoices });
-  };
+  }
 
-  const handleDevelopChoice = (choiceId: string) => {
-    // Créer un nouveau nœud pour ce choix
-    const newNodeId = `${nodes.length + 1}`;
-    const newNode: StoryNode = {
-      id: newNodeId,
-      context: "",
-      choices: [
-        { id: `c1-${newNodeId}`, text: "", nextNodeId: undefined },
-        { id: `c2-${newNodeId}`, text: "", nextNodeId: undefined },
-      ],
-      isEnd: false,
-    };
-
-    // Mettre à jour le choix avec le lien vers le nouveau nœud
-    const updatedChoices = currentNode.choices.map((choice) =>
-      choice.id === choiceId ? { ...choice, nextNodeId: newNodeId } : choice
+  if (error && !storyId) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-black">
+        <div className="text-red-400 text-xl">{error}</div>
+      </div>
     );
-
-    setCurrentNode({ ...currentNode, choices: updatedChoices });
-    setNodes([...nodes, newNode]);
-  };
-
-  const handleSetAsEnd = () => {
-    setCurrentNode({ ...currentNode, isEnd: true, choices: [] });
-  };
-
-  const handleSave = () => {
-    // TODO: Enregistrer l'histoire via l'API
-    console.log("Sauvegarde:", { nodes, currentNode });
-    alert("Histoire sauvegardée !");
-  };
+  }
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-black">
@@ -120,29 +291,28 @@ export default function WriteStoryPage() {
       </button>
 
       {/* Arborescence en haut à droite */}
-      <div className="absolute top-6 right-6 z-20 bg-white/5 backdrop-blur-2xl rounded-2xl border border-white/10 p-4 w-64 h-48 overflow-hidden">
-        <h3 className="text-white font-semibold text-sm mb-3">Arborescence</h3>
-        <div className="relative h-full">
-          {/* Visualisation simplifiée de l'arbre */}
-          <div className="flex flex-col gap-2">
-            {nodes.map((node) => (
-              <div
-                key={node.id}
-                className={`flex items-center gap-2 p-2 rounded-lg transition-all cursor-pointer ${
-                  currentNode.id === node.id
-                    ? "bg-cyan-500/30 border border-cyan-400/50"
-                    : "bg-white/5 hover:bg-white/10"
-                }`}
-                onClick={() => setCurrentNode(node)}
-              >
-                <div className="w-3 h-3 rounded-full bg-cyan-400"></div>
-                <span className="text-white text-xs">Nœud {node.id}</span>
-                {node.isEnd && (
-                  <span className="ml-auto text-xs text-green-400">Fin</span>
-                )}
-              </div>
-            ))}
-          </div>
+      <div className="absolute top-6 right-6 z-20 bg-white/5 backdrop-blur-2xl rounded-2xl border border-white/10 p-4 w-64 max-h-96 overflow-y-auto">
+        <h3 className="text-white font-semibold text-sm mb-3">
+          Arborescence ({pages.length} page{pages.length > 1 ? 's' : ''})
+        </h3>
+        <div className="flex flex-col gap-2">
+          {pages.map((page, index) => (
+            <div
+              key={page._id}
+              className={`flex items-center gap-2 p-2 rounded-lg transition-all cursor-pointer ${
+                currentPage?._id === page._id
+                  ? "bg-cyan-500/30 border border-cyan-400/50"
+                  : "bg-white/5 hover:bg-white/10"
+              }`}
+              onClick={() => handleSelectPage(page)}
+            >
+              <div className="w-3 h-3 rounded-full bg-cyan-400"></div>
+              <span className="text-white text-xs flex-1">Page {index + 1}</span>
+              {page.is_ending && (
+                <span className="text-xs text-green-400 font-semibold">Fin</span>
+              )}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -150,77 +320,133 @@ export default function WriteStoryPage() {
       <main className="relative z-10 min-h-screen pt-32 pb-16 px-8">
         <div className="max-w-4xl mx-auto">
           {/* Titre */}
-          <h1 className="text-3xl sm:text-4xl font-bold text-white text-center mb-8 font-montserrat tracking-tight">
-            Crée une histoire
+          <h1 className="text-3xl sm:text-4xl font-bold text-white text-center mb-2 font-montserrat tracking-tight">
+            {storyTitle}
           </h1>
+          <p className="text-white/60 text-center mb-8">
+            {isSaving ? "Sauvegarde en cours..." : "Créez votre histoire interactive"}
+          </p>
 
-          {/* Zone de contenu */}
-          <div className="bg-white/5 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/10 overflow-hidden mb-6">
-            <div className="p-6">
-              {/* Contexte */}
-              <div className="mb-6">
-                <label htmlFor="context" className="text-white font-semibold text-lg mb-3 block">
-                  Contexte
-                </label>
-                <textarea
-                  id="context"
-                  value={currentNode.context}
-                  onChange={(e) => handleContextChange(e.target.value)}
-                  placeholder="Écrivez le contexte de cette partie de l'histoire..."
-                  rows={8}
-                  className="w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/50 transition-all duration-300 hover:bg-white/10 resize-none"
-                />
-              </div>
-
-              {/* Choix */}
-              {!currentNode.isEnd && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  {currentNode.choices.map((choice, index) => (
-                    <div
-                      key={choice.id}
-                      className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-4"
-                    >
-                      <h3 className="text-white font-semibold mb-3">Choix {index + 1}</h3>
-                      <input
-                        type="text"
-                        value={choice.text}
-                        onChange={(e) => handleChoiceChange(choice.id, e.target.value)}
-                        placeholder={`Texte du choix ${index + 1}...`}
-                        className="w-full px-3 py-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 transition-all mb-3"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleDevelopChoice(choice.id)}
-                        className="w-full px-3 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-sm rounded-xl border border-cyan-400/30 transition-all"
-                      >
-                        Développer le choix {index + 1}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Boutons d'action */}
-              <div className="flex gap-4">
-                {!currentNode.isEnd && (
-                  <button
-                    type="button"
-                    onClick={handleSetAsEnd}
-                    className="flex-1 px-4 py-3 bg-green-500/20 hover:bg-green-500/30 text-green-300 font-semibold rounded-2xl border border-green-400/30 transition-all"
-                  >
-                    Déterminer une fin
-                  </button>
-                )}
+          {/* Messages d'erreur */}
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 mb-6 flex items-start gap-3">
+              <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <span className="text-red-200 text-sm font-medium">{error}</span>
                 <button
-                  type="button"
-                  onClick={handleSave}
-                  className="flex-1 bg-cyan-500/30 hover:bg-cyan-500/40 border border-cyan-400/50 text-white font-bold py-3 rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:shadow-cyan-500/50 hover:scale-[1.02]"
+                  onClick={() => setError("")}
+                  className="ml-2 text-red-300 hover:text-red-100 text-xs underline"
                 >
-                  Sauvegarder
+                  Fermer
                 </button>
               </div>
             </div>
-          </div>
+          )}
+
+          {currentPage && (
+            <div className="bg-white/5 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/10 overflow-hidden mb-6">
+              <div className="p-6">
+                {/* Contenu de la page */}
+                <div className="mb-6">
+                  <label htmlFor="content" className="text-white font-semibold text-lg mb-3 block">
+                    Contenu de la page
+                  </label>
+                  <textarea
+                    id="content"
+                    value={currentPage.content}
+                    onChange={(e) => handleContentChange(e.target.value)}
+                    onBlur={handleContentBlur}
+                    placeholder="Écrivez le contenu narratif de cette partie de l'histoire..."
+                    rows={8}
+                    className="w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/50 transition-all duration-300 hover:bg-white/10 resize-none"
+                  />
+                </div>
+
+                {/* Choix */}
+                {!currentPage.is_ending && (
+                  <>
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-white font-semibold text-lg">Choix possibles</h3>
+                        <button
+                          type="button"
+                          onClick={handleAddChoice}
+                          className="px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-sm rounded-xl border border-cyan-400/30 transition-all"
+                        >
+                          + Ajouter un choix
+                        </button>
+                      </div>
+
+                      {currentPage.choices.length === 0 ? (
+                        <p className="text-white/40 text-sm text-center py-4">
+                          Aucun choix ajouté. Cliquez sur "Ajouter un choix" pour en créer un.
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {currentPage.choices.map((choice, index) => (
+                            <div
+                              key={choice._id}
+                              className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-4"
+                            >
+                              <h4 className="text-white font-semibold mb-3">Choix {index + 1}</h4>
+                              <input
+                                type="text"
+                                value={choice.text}
+                                onChange={(e) => handleChoiceChange(choice._id, e.target.value)}
+                                placeholder={`Texte du choix ${index + 1}...`}
+                                className="w-full px-3 py-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 transition-all mb-3"
+                              />
+                              {choice.target_page_id ? (
+                                <div className="text-xs text-green-400 flex items-center gap-1">
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                  </svg>
+                                  Choix développé
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDevelopChoice(choice._id)}
+                                  disabled={!choice.text.trim() || isSaving}
+                                  className="w-full px-3 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-sm rounded-xl border border-cyan-400/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  Développer →
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {/* Boutons d'action */}
+                <div className="flex gap-4 mt-6">
+                  {!currentPage.is_ending && (
+                    <button
+                      type="button"
+                      onClick={handleSetAsEnd}
+                      disabled={isSaving}
+                      className="flex-1 px-4 py-3 bg-green-500/20 hover:bg-green-500/30 text-green-300 font-semibold rounded-2xl border border-green-400/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Marquer comme fin
+                    </button>
+                  )}
+                  {currentPage.is_ending && (
+                    <div className="flex-1 px-4 py-3 bg-green-500/20 text-green-300 font-semibold rounded-2xl border border-green-400/30 flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      C'est une fin
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>

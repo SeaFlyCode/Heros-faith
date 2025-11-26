@@ -8,12 +8,14 @@ import {
     updateStory,
     deleteStory
 } from '../controllers/storyControllers.ts';
+import { getPagesByStoryId } from '../controllers/pageControllers.ts';
 
 const router = Router();
 
 router.post('/', authMiddleware, createStory);
 router.get('/', getAllStories);
 router.get('/:storyId', getStoryById);
+router.get('/:storyId/pages', authMiddleware, getPagesByStoryId);
 router.patch('/:storyId', authMiddleware, roleMiddleware('admin'), updateStory);
 router.delete('/:storyId', authMiddleware, roleMiddleware('admin'), deleteStory);
 

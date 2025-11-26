@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import { Types } from 'mongoose';
 import { Page } from '../models/page.ts';
 
 export async function createPage(req: Request, res: Response, next: NextFunction) {
@@ -26,6 +27,16 @@ export async function getPageById(req: Request, res: Response, next: NextFunctio
     const page = await Page.findById(pageId);
     if (!page) return res.status(404).json({ message: 'Page not found' });
     res.json(page);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getPagesByStoryId(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { storyId } = req.params;
+    const pages = await Page.find({ story_id: new Types.ObjectId(storyId) });
+    res.json(pages);
   } catch (err) {
     next(err);
   }

@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import { Types } from 'mongoose';
 import { Choice } from '../models/choice.ts';
 
 export async function createChoice(req: Request, res: Response, next: NextFunction) {
@@ -26,6 +27,16 @@ export async function getChoiceById(req: Request, res: Response, next: NextFunct
     const choice = await Choice.findById(choiceId);
     if (!choice) return res.status(404).json({ message: 'Choice not found' });
     res.json(choice);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getChoicesByPageId(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { pageId } = req.params;
+    const choices = await Choice.find({ page_id: new Types.ObjectId(pageId) });
+    res.json(choices);
   } catch (err) {
     next(err);
   }
