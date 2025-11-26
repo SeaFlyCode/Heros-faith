@@ -7,6 +7,8 @@ import {
   storiesApi, 
   storyPagesApi, 
   choicesApi,
+  partiesApi,
+  ratingsApi,
   getAuthorDisplayName,
   type Story, 
   type StoryPage,
@@ -14,6 +16,123 @@ import {
   type ApiError 
 } from "@/api";
 import { useAuth } from "@/hooks/useAuth";
+
+// Modal de notation
+const RatingModal = ({ 
+  isOpen, 
+  onClose, 
+  onSubmit, 
+  storyTitle 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onSubmit: (rating: number) => void;
+  storyTitle: string;
+}) => {
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [hoveredRating, setHoveredRating] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async () => {
+    if (selectedRating > 0) {
+      setIsSubmitting(true);
+      await onSubmit(selectedRating);
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      
+      {/* Modal */}
+      <div className="relative bg-gradient-to-br from-gray-900 to-black border border-white/20 rounded-3xl p-8 max-w-md w-full shadow-2xl">
+        {/* Icône */}
+        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-yellow-500/20 to-orange-500/20 flex items-center justify-center">
+          <svg className="w-8 h-8 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+        </div>
+
+        {/* Titre */}
+        <h2 className="text-2xl font-bold text-white text-center mb-2">
+          Félicitations ! 🎉
+        </h2>
+        <p className="text-white/60 text-center mb-6">
+          Vous avez terminé <span className="text-white font-medium">"{storyTitle}"</span>
+        </p>
+
+        {/* Question */}
+        <p className="text-white text-center mb-4">
+          Comment avez-vous trouvé cette histoire ?
+        </p>
+
+        {/* Étoiles */}
+        <div className="flex justify-center gap-2 mb-8">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              onClick={() => setSelectedRating(star)}
+              onMouseEnter={() => setHoveredRating(star)}
+              onMouseLeave={() => setHoveredRating(0)}
+              className="transition-transform hover:scale-110"
+            >
+              <svg 
+                className={`w-10 h-10 transition-colors ${
+                  star <= (hoveredRating || selectedRating) 
+                    ? 'text-yellow-400' 
+                    : 'text-gray-600'
+                }`} 
+                fill="currentColor" 
+                viewBox="0 0 20 20"
+              >
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+            </button>
+          ))}
+        </div>
+
+        {/* Texte du rating */}
+        {selectedRating > 0 && (
+          <p className="text-center text-white/60 mb-6">
+            {selectedRating === 1 && "Pas terrible 😕"}
+            {selectedRating === 2 && "Bof 😐"}
+            {selectedRating === 3 && "Pas mal 🙂"}
+            {selectedRating === 4 && "Super ! 😊"}
+            {selectedRating === 5 && "Excellent ! 🤩"}
+          </p>
+        )}
+
+        {/* Boutons */}
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 font-medium rounded-xl transition-all"
+          >
+            Passer
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={selectedRating === 0 || isSubmitting}
+            className={`flex-1 px-4 py-3 font-medium rounded-xl transition-all ${
+              selectedRating > 0 
+                ? 'bg-yellow-500/30 hover:bg-yellow-500/40 border border-yellow-400/50 text-white' 
+                : 'bg-gray-700/30 border border-gray-600/30 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {isSubmitting ? 'Envoi...' : 'Noter'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function ReadStoryPage() {
   const router = useRouter();
@@ -27,11 +146,14 @@ export default function ReadStoryPage() {
   const [currentPage, setCurrentPage] = useState<StoryPage | null>(null);
   const [choices, setChoices] = useState<Choice[]>([]);
   const [pageHistory, setPageHistory] = useState<string[]>([]);
+  const [partyId, setPartyId] = useState<string | null>(null);
   
   // États UI
   const [isLoading, setIsLoading] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [error, setError] = useState("");
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [hasCompletedEnding, setHasCompletedEnding] = useState(false);
 
   // Charger les données de l'histoire
   useEffect(() => {
@@ -40,10 +162,10 @@ export default function ReadStoryPage() {
       return;
     }
 
-    if (isAuthenticated && storyId) {
+    if (isAuthenticated && storyId && user) {
       loadStoryData();
     }
-  }, [authLoading, isAuthenticated, storyId]);
+  }, [authLoading, isAuthenticated, storyId, user]);
 
   const loadStoryData = async () => {
     try {
@@ -59,6 +181,32 @@ export default function ReadStoryPage() {
       const pagesData = await storyPagesApi.getByStoryId(storyId);
       setPages(pagesData);
       console.log("✅ Pages chargées:", pagesData.length);
+
+      // Créer ou récupérer une partie pour cette histoire
+      if (user) {
+        try {
+          // Chercher une partie existante non terminée
+          const userParties = await partiesApi.getByUserId(user._id);
+          const existingParty = userParties.find(
+            (p: any) => p.story_id === storyId && !p.end_date
+          );
+
+          if (existingParty) {
+            setPartyId(existingParty._id);
+            console.log("✅ Partie existante trouvée:", existingParty._id);
+          } else {
+            // Créer une nouvelle partie
+            const newParty = await partiesApi.create({
+              user_id: user._id,
+              story_id: storyId,
+            });
+            setPartyId(newParty._id);
+            console.log("✅ Nouvelle partie créée:", newParty._id);
+          }
+        } catch (err) {
+          console.error("Erreur lors de la gestion de la partie:", err);
+        }
+      }
 
       // Trouver la première page (celle qui n'est la cible d'aucun choix = page de départ)
       if (pagesData.length > 0) {
@@ -111,6 +259,10 @@ export default function ReadStoryPage() {
         console.log("✅ Choix chargés:", pageChoices.length);
       } else {
         setChoices([]);
+        // C'est une page de fin - marquer la partie comme terminée et afficher le modal
+        if (!hasCompletedEnding) {
+          await handleEndingReached();
+        }
       }
 
       // Petit délai pour l'animation
@@ -122,7 +274,46 @@ export default function ReadStoryPage() {
       console.error("❌ Erreur lors de la navigation:", err);
       setIsTransitioning(false);
     }
-  }, [pages]);
+  }, [pages, hasCompletedEnding]);
+
+  // Gérer l'arrivée à une fin
+  const handleEndingReached = async () => {
+    try {
+      // Marquer la partie comme terminée
+      if (partyId) {
+        await partiesApi.update(partyId, {
+          end_date: new Date().toISOString(),
+        });
+        console.log("✅ Partie marquée comme terminée");
+      }
+      
+      setHasCompletedEnding(true);
+      // Afficher le modal de notation après un court délai
+      setTimeout(() => {
+        setShowRatingModal(true);
+      }, 1000);
+    } catch (err) {
+      console.error("Erreur lors de la fin de partie:", err);
+    }
+  };
+
+  // Soumettre la notation
+  const handleRatingSubmit = async (rating: number) => {
+    try {
+      if (user && storyId) {
+        await ratingsApi.create({
+          user_id: user._id,
+          story_id: storyId,
+          rating: rating,
+        });
+        console.log("✅ Note enregistrée:", rating);
+      }
+    } catch (err) {
+      console.error("Erreur lors de l'enregistrement de la note:", err);
+    } finally {
+      setShowRatingModal(false);
+    }
+  };
 
   // Gérer le choix d'une option
   const handleChoice = (choice: Choice) => {
@@ -374,6 +565,14 @@ export default function ReadStoryPage() {
           )}
         </div>
       </main>
+
+      {/* Modal de notation */}
+      <RatingModal
+        isOpen={showRatingModal}
+        onClose={() => setShowRatingModal(false)}
+        onSubmit={handleRatingSubmit}
+        storyTitle={story?.title || "cette histoire"}
+      />
     </div>
   );
 }
