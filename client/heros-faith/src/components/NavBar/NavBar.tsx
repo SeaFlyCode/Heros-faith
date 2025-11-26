@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import GlassSurface from "@/components/GlassSurface";
 import UserMenu from "@/components/NavBar/UserMenu";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,6 +9,8 @@ import "@/styles/globals.css";
 
 export default function NavBar() {
     const { user, isAuthenticated, logout, isLoading } = useAuth();
+    const pathname = usePathname();
+    const isHomePage = pathname === "/";
 
     return (
         <div className="nav fixed top-0 left-0 w-full z-50 flex justify-center py-4 font-montserrat text-white" style={{background: 'transparent'}}>
@@ -23,12 +26,12 @@ export default function NavBar() {
                 backgroundOpacity={0.25}
                 mixBlendMode="screen"
             >
-                {/* Logo */}
+                {/* Logo/Titre */}
                 <Link
                     href="/"
-                    className="text-2xl font-bold no-underline mr-8 whitespace-nowrap font-montserrat text-white drop-shadow"
+                    className="text-xl font-bruno no-underline mr-8 whitespace-nowrap text-white drop-shadow tracking-wide hover:text-yellow-400 transition-colors"
                 >
-                    {"Hero's Faith"}
+                    Hero's Faith
                 </Link>
                 {/* Menu Desktop */}
                 <div className="flex gap-x-4">
