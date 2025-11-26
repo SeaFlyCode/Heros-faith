@@ -5,13 +5,15 @@ import {
     getAllStories,
     getStoryById,
     updateStory,
-    deleteStory
+    deleteStory,
+    getMyStories
 } from '../controllers/storyControllers.ts';
 import { getPagesByStoryId } from '../controllers/pageControllers.ts';
 
 const router = Router();
 
 router.post('/', authMiddleware, createStory);
+router.get('/my', authMiddleware, getMyStories); // Récupérer les histoires de l'utilisateur connecté
 router.get('/', getAllStories);
 router.get('/:storyId', getStoryById);
 router.get('/:storyId/pages', authMiddleware, getPagesByStoryId);

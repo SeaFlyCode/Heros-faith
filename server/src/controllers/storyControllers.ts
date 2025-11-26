@@ -17,6 +17,23 @@ export async function getAllStories(req: Request, res: Response, next: NextFunct
   }
 }
 
+// Récupérer les histoires de l'utilisateur connecté
+export async function getMyStories(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const userId = (req.user as JwtPayload)?.userId;
+
+    if (!userId) {
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
+
+    const stories = await Story.find({ author: userId }).populate('author', 'username');
+    console.log(`✅ Histoires de l'utilisateur ${userId}:`, stories.length);
+    res.json(stories);
+  } catch (err) {
+    next(err);
+  }
+}
+
 // Créer une nouvelle story
 export async function createStory(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {

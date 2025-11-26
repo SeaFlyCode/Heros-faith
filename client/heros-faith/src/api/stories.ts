@@ -55,6 +55,13 @@ export const storiesApi = {
   },
 
   /**
+   * Récupérer les histoires de l'utilisateur connecté
+   */
+  getMyStories: (): Promise<Story[]> => {
+    return apiClient.get<Story[]>('/stories/my');
+  },
+
+  /**
    * Récupérer une histoire par son ID
    */
   getById: (storyId: string): Promise<Story> => {

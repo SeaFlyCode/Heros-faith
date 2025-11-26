@@ -22,11 +22,12 @@ export default function StoriesPage() {
   const loadStories = async () => {
     try {
       setIsLoading(true);
-      console.log("📚 Chargement des histoires...");
-      const allStories = await storiesApi.getAll();
-      console.log("✅ Histoires récupérées:", allStories);
-      const userStories = allStories.filter(story => story.author === user?._id);
-      console.log("📖 Histoires de l'utilisateur:", userStories);
+      console.log("📚 Chargement des histoires de l'utilisateur...");
+
+      // Utiliser getMyStories pour récupérer directement les histoires de l'utilisateur connecté
+      const userStories = await storiesApi.getMyStories();
+
+      console.log("✅ Histoires récupérées:", userStories.length, "histoire(s)");
       setStories(userStories);
       setError("");
     } catch (err) {

@@ -33,6 +33,64 @@ export default function WriteStoryPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Fonction pour trier les pages dans l'ordre de l'arbre (racine en premier)
+  const sortPagesTree = (pages: PageWithChoices[]): PageWithChoices[] => {
+    if (pages.length === 0) return pages;
+
+    // Trouver la page racine (celle qui n'est la cible d'aucun choix)
+    const pageIds = new Set(pages.map(p => p._id));
+    const targetPageIds = new Set<string>();
+
+    pages.forEach(page => {
+      page.choices.forEach(choice => {
+        if (choice.target_page_id) {
+          targetPageIds.add(choice.target_page_id);
+        }
+      });
+    });
+
+    // La page racine est celle qui n'est jamais une cible
+    const rootPage = pages.find(p => !targetPageIds.has(p._id));
+
+    if (!rootPage) {
+      console.warn("⚠️ Aucune page racine trouvée, utilisation de la première page");
+      return pages;
+    }
+
+    // Trier en parcourant l'arbre en largeur
+    const sorted: PageWithChoices[] = [];
+    const queue: PageWithChoices[] = [rootPage];
+    const visited = new Set<string>();
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+
+      if (visited.has(current._id)) continue;
+      visited.add(current._id);
+      sorted.push(current);
+
+      // Ajouter les enfants (pages ciblées par les choix de cette page)
+      current.choices.forEach(choice => {
+        if (choice.target_page_id) {
+          const childPage = pages.find(p => p._id === choice.target_page_id);
+          if (childPage && !visited.has(childPage._id)) {
+            queue.push(childPage);
+          }
+        }
+      });
+    }
+
+    // Ajouter les pages non visitées (orphelines) à la fin
+    pages.forEach(page => {
+      if (!visited.has(page._id)) {
+        sorted.push(page);
+      }
+    });
+
+    console.log(`✅ Pages triées: ${sorted.length} pages, racine = "${sorted[0]?._id}"`);
+    return sorted;
+  };
+
   const loadStoryAndPages = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -72,8 +130,11 @@ export default function WriteStoryPage() {
           })
         );
 
-        setPages(pagesWithChoices);
-        setCurrentPage(pagesWithChoices[0]);
+        // Trier les pages pour que la page racine (sans parent) soit en premier
+        const sortedPages = sortPagesTree(pagesWithChoices);
+
+        setPages(sortedPages);
+        setCurrentPage(sortedPages[0]);
       }
     } catch (err) {
       const apiError = err as ApiError;
@@ -377,10 +438,13 @@ export default function WriteStoryPage() {
     });
   };
 
-  const handleNodeSelect = (node: { id: string }) => {
+  const handleNodeSelect = (node: { id: string; label?: string; context: string; choices: any[]; isEnd: boolean; parentId?: string; parentChoiceId?: string }) => {
     const page = pages.find((p) => p._id === node.id);
     if (page) {
       setCurrentPage(page);
+      console.log(`✅ Navigation vers le nœud: ${node.label || "Sans nom"} (${node.id})`);
+    } else {
+      console.error(`❌ Page non trouvée pour le nœud: ${node.id}`);
     }
   };
 
