@@ -46,10 +46,13 @@ export class ApiClient {
    * Gère les erreurs de l'API
    */
   private async handleResponse<T>(response: Response): Promise<T> {
+    console.log('📡 [API] Response Status:', response.status, response.statusText);
+
     if (!response.ok) {
       let errorMessage = 'Une erreur est survenue';
       try {
         const errorData = await response.json();
+        console.error('❌ [API] Error Response:', errorData);
         errorMessage = errorData.message || errorMessage;
 
         const error: ApiError = {
@@ -71,16 +74,20 @@ export class ApiClient {
 
     // Si la réponse est vide (204 No Content)
     if (response.status === 204) {
+      console.log('✅ [API] 204 No Content');
       return {} as T;
     }
 
-    return response.json();
+    const data = await response.json();
+    console.log('✅ [API] Response Data:', data);
+    return data;
   }
 
   /**
    * Requête GET
    */
   async get<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    console.log('🌐 [API] GET', `${this.baseUrl}${endpoint}`);
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: 'GET',
       headers: this.getHeaders(options?.headers),

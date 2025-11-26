@@ -4,7 +4,7 @@ import NavBar from "./NavBar/NavBar";
 
 export default function ClientNavBarWrapper() {
   const pathname = usePathname();
-  if (pathname.startsWith("/login")) return null;
+  if (pathname.startsWith("/login") || pathname.startsWith("/register")) return null;
   return <NavBar />;
 }
 

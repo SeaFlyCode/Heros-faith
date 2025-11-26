@@ -5,48 +5,79 @@ import { useRouter } from "next/navigation";
 import Prism from "@/components/Prism";
 import { usersApi, type ApiError } from "@/api";
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
-    console.log('🔐 Début de la connexion...');
-    console.log('Données du formulaire:', { email, hasPassword: !!password });
+    console.log('📝 Début de l\'inscription...');
+    console.log('Données du formulaire:', { email, username, hasPassword: !!password, hasConfirmPassword: !!confirmPassword, role: 'user' });
 
-    if (!email || !password) {
+    // Validations
+    if (!email || !username || !password || !confirmPassword) {
       const missing = [];
       if (!email) missing.push('email');
+      if (!username) missing.push('username');
       if (!password) missing.push('password');
+      if (!confirmPassword) missing.push('confirmPassword');
       console.log('❌ Champs manquants:', missing);
       setError("Veuillez remplir tous les champs.");
       setIsLoading(false);
       return;
     }
 
+    if (password !== confirmPassword) {
+      console.log('❌ Les mots de passe ne correspondent pas');
+      setError("Les mots de passe ne correspondent pas.");
+      setIsLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      console.log('❌ Mot de passe trop court:', password.length, 'caractères');
+      setError("Le mot de passe doit contenir au moins 6 caractères.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      console.log('📤 Envoi de la requête de connexion pour:', email);
-      const data = await usersApi.login({ email, password });
-      console.log('✅ Connexion réussie:', { token: data.token.substring(0, 20) + '...', user: data.user });
+      const userData = {
+        email,
+        username,
+        password,
+        role: 'user'
+      };
+      console.log('📤 Envoi des données d\'inscription:', { ...userData, password: '***' });
 
-      // Stocker le token
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      const response = await usersApi.create(userData);
+      console.log('✅ Utilisateur créé avec succès:', response);
 
-      console.log('➡️ Redirection vers /dashboard');
+      // Connexion automatique après inscription
+      console.log('🔐 Connexion automatique...');
+      const loginData = await usersApi.login({ email, password });
+      console.log('✅ Connexion réussie:', { token: loginData.token.substring(0, 20) + '...', user: loginData.user });
+
+      localStorage.setItem("token", loginData.token);
+      localStorage.setItem("user", JSON.stringify(loginData.user));
+
       // Redirection
+      console.log('➡️ Redirection vers /dashboard');
       router.push("/dashboard");
     } catch (err) {
       const apiError = err as ApiError;
-      console.error('❌ Erreur lors de la connexion:', apiError);
-      setError(apiError.message || "Erreur lors de la connexion");
+      console.error('❌ Erreur lors de l\'inscription:', apiError);
+      setError(apiError.message || "Erreur lors de l'inscription");
     } finally {
       setIsLoading(false);
     }
@@ -71,7 +102,7 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-black/60 pointer-events-none z-10" />
       </div>
 
-      {/* Bouton retour modernisé */}
+      {/* Bouton retour */}
       <button
         type="button"
         onClick={() => router.push("/")}
@@ -96,10 +127,10 @@ export default function LoginPage() {
             {/* Header */}
             <div className="text-center mb-10">
               <h1 className="text-4xl sm:text-5xl font-bold text-white mb-3 tracking-tight">
-                Bon retour !
+                Inscription
               </h1>
               <p className="text-white/60 text-base">
-                Connectez-vous pour continuer votre aventure
+                Créez votre compte pour débuter votre aventure
               </p>
             </div>
 
@@ -115,7 +146,7 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {/* Email */}
+              {/* Adresse e-mail */}
               <div className="space-y-3">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
@@ -135,6 +166,31 @@ export default function LoginPage() {
                   placeholder="exemple@email.com"
                   className="w-full px-5 py-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl text-white text-base placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 hover:bg-white/10"
                   autoComplete="email"
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+
+              {/* Nom d'utilisateur */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  <label htmlFor="username" className="text-lg font-semibold text-white">
+                    Nom d&apos;utilisateur
+                  </label>
+                </div>
+                <input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Votre nom d'utilisateur"
+                  className="w-full px-5 py-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl text-white text-base placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 hover:bg-white/10"
+                  autoComplete="username"
                   disabled={isLoading}
                   required
                 />
@@ -160,7 +216,7 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     className="w-full px-5 py-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl text-white text-base placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 pr-14 hover:bg-white/10"
-                    autoComplete="current-password"
+                    autoComplete="new-password"
                     disabled={isLoading}
                     required
                   />
@@ -185,18 +241,52 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Mot de passe oublié */}
-              <div className="flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => router.push("/forgot-password")}
-                  className="text-sm text-white/60 hover:text-white transition-colors font-medium underline decoration-dotted underline-offset-4"
-                >
-                  Mot de passe oublié ?
-                </button>
+              {/* Confirmer mot de passe */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </div>
+                  <label htmlFor="confirmPassword" className="text-lg font-semibold text-white">
+                    Confirmer mot de passe
+                  </label>
+                </div>
+                <div className="relative">
+                  <input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-5 py-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl text-white text-base placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 pr-14 hover:bg-white/10"
+                    autoComplete="new-password"
+                    disabled={isLoading}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/90 transition-colors p-1"
+                    tabIndex={-1}
+                    aria-label={showConfirmPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                  >
+                    {showConfirmPassword ? (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
 
-              {/* Bouton de connexion */}
+              {/* Bouton d'inscription */}
               <button
                 type="submit"
                 disabled={isLoading}
@@ -210,11 +300,11 @@ export default function LoginPage() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      <span className="text-lg">Connexion en cours...</span>
+                      <span className="text-lg">Inscription en cours...</span>
                     </>
                   ) : (
                     <>
-                      <span className="text-lg">Se connecter</span>
+                      <span className="text-lg">S&apos;inscrire</span>
                       <svg className="w-6 h-6 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                       </svg>
@@ -222,6 +312,7 @@ export default function LoginPage() {
                   )}
                 </div>
               </button>
+
             </form>
 
             {/* Séparateur */}
@@ -231,18 +322,18 @@ export default function LoginPage() {
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="px-4 bg-transparent text-white/50 text-base">
-                  Nouveau sur la plateforme ?
+                  Vous avez déjà un compte ?
                 </span>
               </div>
             </div>
 
-            {/* Lien inscription */}
+            {/* Lien connexion */}
             <button
               type="button"
-              onClick={() => router.push("/register")}
+              onClick={() => router.push("/login")}
               className="group w-full bg-white/5 hover:bg-white/10 backdrop-blur-sm border border-white/10 hover:border-white/20 text-white font-semibold py-5 rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl"
             >
-              <span className="text-lg">Créer un compte</span>
+              <span className="text-lg">Se connecter</span>
               <svg className="w-6 h-6 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
@@ -281,3 +372,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
