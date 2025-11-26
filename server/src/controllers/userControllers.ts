@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/user.ts';
+import type { AuthenticatedRequest } from '../middlewares/authMiddleware.ts';
 
 export async function createUser(req: Request, res: Response, next: NextFunction) {
   try {
@@ -117,14 +118,63 @@ export async function getUserById(req: Request, res: Response, next: NextFunctio
   }
 }
 
-export async function updateUser(req: Request, res: Response, next: NextFunction) {
+export async function updateUser(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const { userId } = req.params;
-    const updates = req.body;
-    const user = await User.findByIdAndUpdate(userId, updates, { new: true });
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    res.json(user);
+    const { username, email, password, currentPassword } = req.body;
+
+    console.log('📝 Mise à jour de l\'utilisateur:', { userId, username, email, hasPassword: !!password });
+    console.log('📋 req.body complet:', req.body);
+    console.log('🔍 Type de username:', typeof username, '- Valeur:', username);
+    console.log('🔍 Type de email:', typeof email, '- Valeur:', email);
+
+    // Vérifier que l'utilisateur modifie bien son propre profil
+    const authenticatedUser = req.user as any;
+    if (authenticatedUser.userId !== userId && authenticatedUser.role !== 'admin') {
+      console.log('❌ Tentative de modification d\'un autre profil');
+      return res.status(403).json({ message: 'Vous ne pouvez modifier que votre propre profil' });
+    }
+
+    // Trouver l'utilisateur
+    const user = await User.findById(userId);
+    if (!user) {
+      console.log('❌ Utilisateur non trouvé:', userId);
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+
+    // Si on veut changer le mot de passe, vérifier l'ancien
+    if (password) {
+      if (!currentPassword) {
+        console.log('❌ Mot de passe actuel manquant');
+        return res.status(400).json({ message: 'Le mot de passe actuel est requis pour changer le mot de passe' });
+      }
+
+      // Vérifier que le mot de passe actuel est correct
+      const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isCurrentPasswordValid) {
+        console.log('❌ Mot de passe actuel incorrect');
+        return res.status(401).json({ message: 'Mot de passe actuel incorrect' });
+      }
+
+      // Hasher le nouveau mot de passe
+      user.password = await bcrypt.hash(password, 10);
+      console.log('✅ Mot de passe mis à jour');
+    }
+
+    // Mettre à jour les autres champs
+    if (username) user.username = username;
+    if (email) user.email = email;
+
+    // Sauvegarder
+    await user.save();
+
+    console.log('✅ Utilisateur mis à jour avec succès:', { id: user._id, username: user.username });
+
+    // Retourner l'utilisateur sans le mot de passe
+    const { password: _, ...userResponse } = user.toObject();
+    res.json(userResponse);
   } catch (err) {
+    console.error('❌ Erreur lors de la mise à jour:', err);
     next(err);
   }
 }
