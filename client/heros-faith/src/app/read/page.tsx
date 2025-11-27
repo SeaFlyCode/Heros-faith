@@ -5,9 +5,7 @@ import { useRouter } from "next/navigation";
 import PrismTransition from "@/components/PrismTransition";
 import { storiesApi, partiesApi, ratingsApi, type Story, type ApiError } from "@/api";
 import { useAuth } from "@/hooks/useAuth";
-
-// URL de base de l'API pour les images
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000';
+import { getCoverImageUrl } from "@/utils/imageUrl";
 
 // Interface pour les histoires enrichies avec progression et rating
 interface EnrichedStory extends Story {
@@ -27,9 +25,7 @@ const StoryCard = ({ story, showProgress = false }: { story: EnrichedStory; show
   };
 
   // Construire l'URL complète de l'image
-  const coverImageUrl = story.coverImage 
-    ? `${API_BASE_URL}${story.coverImage}`
-    : null;
+  const coverImageUrl = getCoverImageUrl(story.coverImage);
 
   return (
     <div

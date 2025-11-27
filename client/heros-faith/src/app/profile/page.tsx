@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import Prism from "@/components/Prism";
 import Link from "next/link";
 import { usersApi, storiesApi, partiesApi, UserStats, Story, Party, PartyStory } from "@/api";
+import { getProfileImageUrl } from "@/utils/imageUrl";
 
 export default function ProfilePage() {
   const { user, isLoading, isAuthenticated } = useAuth();
@@ -26,7 +27,7 @@ export default function ProfilePage() {
   // Log pour tracer la photo de profil
   useEffect(() => {
     if (user?.profilePicture) {
-      const imageUrl = `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000'}/uploads/${user.profilePicture}`;
+      const imageUrl = getProfileImageUrl(user.profilePicture);
       console.log('📸 [ProfilePage] Chargement de la photo de profil:', {
         profilePicture: user.profilePicture,
         imageUrl,
@@ -149,7 +150,7 @@ export default function ProfilePage() {
                   <div className="w-32 h-32 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-4 border-white/20 flex items-center justify-center overflow-hidden">
                     {user.profilePicture ? (
                       <img
-                        src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000'}/uploads/${user.profilePicture}`}
+                        src={getProfileImageUrl(user.profilePicture) || ''}
                         alt="Photo de profil"
                         className="w-full h-full object-cover"
                       />
