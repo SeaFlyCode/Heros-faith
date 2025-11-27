@@ -3,6 +3,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import ReactCrop, { Crop, PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
+import { getProfileImageUrl } from '@/utils/imageUrl';
 
 interface ProfilePictureUploadProps {
   currentImage?: string;
@@ -149,10 +150,7 @@ export default function ProfilePictureUpload({
     }
   };
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-  const profileImageUrl = currentImage
-    ? `${API_BASE_URL.replace('/api', '')}/uploads/${currentImage}`
-    : null;
+  const profileImageUrl = getProfileImageUrl(currentImage);
 
   return (
     <div className="space-y-4">

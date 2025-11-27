@@ -4,9 +4,7 @@ import { useRouter } from "next/navigation";
 import PrismTransition from "@/components/PrismTransition";
 import { storiesApi, type Story } from "@/api";
 import { useAuth } from "@/hooks/useAuth";
-
-// URL de base de l'API pour les images
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000';
+import { getCoverImageUrl } from "@/utils/imageUrl";
 
 export default function StoriesPage() {
   const router = useRouter();
@@ -117,10 +115,8 @@ export default function StoriesPage() {
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
                 {stories.map((story) => {
-                  const coverImageUrl = story.coverImage 
-                    ? `${API_BASE_URL}${story.coverImage}`
-                    : null;
-                  
+                  const coverImageUrl = getCoverImageUrl(story.coverImage);
+
                   return (
                     <div key={story._id} className="group relative bg-white/5 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/10 overflow-hidden hover:scale-[1.02] transition-all duration-300 cursor-pointer" onClick={() => handleEditStory(story._id)}>
                       {/* Image de couverture ou placeholder */}
