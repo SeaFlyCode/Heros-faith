@@ -322,14 +322,14 @@ export async function uploadProfilePicture(req: AuthenticatedRequest, res: Respo
       userId: user._id,
       username: user.username,
       profilePicture: user.profilePicture,
-      profilePictureUrl: `/uploads/${user.profilePicture}`
+      profilePictureUrl: `/api/uploads/${user.profilePicture}`
     });
 
     // Retourner l'URL de la photo de profil
     res.json({
       message: 'Photo de profil uploadée avec succès',
       profilePicture: user.profilePicture,
-      profilePictureUrl: `/uploads/${user.profilePicture}`
+      profilePictureUrl: `/api/uploads/${user.profilePicture}`
     });
   } catch (err) {
     // En cas d'erreur, supprimer le fichier uploadé
