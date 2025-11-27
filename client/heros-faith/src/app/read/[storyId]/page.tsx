@@ -189,6 +189,7 @@ export default function ReadStoryPage() {
       console.log("✅ Pages chargées:", pagesData.length);
 
       // Créer ou récupérer une partie pour cette histoire
+      let currentParty: any = null;
       if (user) {
         try {
           // Chercher une partie existante non terminée
@@ -202,6 +203,8 @@ export default function ReadStoryPage() {
 
           if (existingParty) {
             setPartyId(existingParty._id);
+            currentParty = existingParty;
+            console.log("📚 Partie existante trouvée, progression:", existingParty.path.length, "pages visitées");
           } else {
             // Créer une nouvelle partie
             const newParty = await partiesApi.create({
@@ -209,19 +212,37 @@ export default function ReadStoryPage() {
               story_id: storyId,
             });
             setPartyId(newParty._id);
+            currentParty = newParty;
+            console.log("🆕 Nouvelle partie créée");
           }
         } catch (err) {
           console.error("Erreur lors de la gestion de la partie:", err);
         }
       }
 
-      // Trouver la première page (celle qui n'est la cible d'aucun choix = page de départ)
+      // Trouver la première page ou reprendre la dernière page visitée
       if (pagesData.length > 0) {
-        const firstPage = await findFirstPage(pagesData);
-        if (firstPage) {
-          await navigateToPage(firstPage._id, pagesData);
+        // Si la partie a un historique, reprendre à la dernière page
+        if (currentParty && currentParty.path && currentParty.path.length > 0) {
+          const lastPageId = currentParty.path[currentParty.path.length - 1];
+          const lastPageIdStr = typeof lastPageId === 'object' ? lastPageId.toString() : lastPageId;
+
+          console.log("🔄 Reprise de la lecture à la dernière page visitée:", lastPageIdStr);
+
+          // Restaurer l'historique complet
+          setPageHistory(currentParty.path.map((id: any) =>
+            typeof id === 'object' ? id.toString() : id
+          ));
+
+          await navigateToPage(lastPageIdStr, pagesData);
         } else {
-          setError("Aucune page de départ trouvée pour cette histoire");
+          // Sinon, commencer au début
+          const firstPage = await findFirstPage(pagesData);
+          if (firstPage) {
+            await navigateToPage(firstPage._id, pagesData);
+          } else {
+            setError("Aucune page de départ trouvée pour cette histoire");
+          }
         }
       } else {
         setError("Cette histoire n'a pas encore de pages");
@@ -292,7 +313,21 @@ export default function ReadStoryPage() {
       setCurrentPage(page);
 
       // Ajouter à l'historique
-      setPageHistory(prev => [...prev, pageId]);
+      setPageHistory(prev => {
+        const newHistory = [...prev, pageId];
+
+        // Mettre à jour la progression dans la partie
+        if (partyIdRef.current) {
+          partiesApi.update(partyIdRef.current, {
+            path: newHistory,
+          }).catch(err => {
+            console.error("❌ Erreur lors de la mise à jour de la progression:", err);
+          });
+          console.log("💾 Progression enregistrée: page", newHistory.length, "/", pages.length);
+        }
+
+        return newHistory;
+      });
 
       // Charger les choix de cette page
       if (!page.is_ending) {
@@ -373,7 +408,19 @@ export default function ReadStoryPage() {
       const newHistory = [...pageHistory];
       newHistory.pop(); // Retirer la page actuelle
       const previousPageId = newHistory[newHistory.length - 1];
+
+      // Mettre à jour l'historique et la progression
       setPageHistory(newHistory.slice(0, -1)); // Retirer aussi la précédente car navigateToPage va l'ajouter
+
+      // Mettre à jour la progression dans la base de données
+      if (partyIdRef.current) {
+        partiesApi.update(partyIdRef.current, {
+          path: newHistory,
+        }).catch(err => {
+          console.error("❌ Erreur lors de la mise à jour de la progression:", err);
+        });
+      }
+
       navigateToPage(previousPageId);
     }
   };
@@ -381,6 +428,21 @@ export default function ReadStoryPage() {
   // Recommencer l'histoire
   const handleRestart = async () => {
     setPageHistory([]);
+    setHasCompletedEnding(false);
+
+    // Réinitialiser la progression dans la base de données
+    if (partyIdRef.current) {
+      try {
+        await partiesApi.update(partyIdRef.current, {
+          path: [],
+          end_date: undefined,
+        });
+        console.log("🔄 Progression réinitialisée");
+      } catch (err) {
+        console.error("Erreur lors de la réinitialisation:", err);
+      }
+    }
+
     if (pages.length > 0) {
       const firstPage = await findFirstPage(pages);
       if (firstPage) {
