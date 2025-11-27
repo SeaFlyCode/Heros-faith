@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { errorHandler } from './middlewares/errorHandler.ts';
 import { connectDB } from './config/database.ts';
 import dotenv from 'dotenv';
@@ -16,6 +18,10 @@ import reportRoutes from './routes/reportRoutes.ts';
 
 dotenv.config();
 
+// Obtenir __dirname en ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -28,6 +34,9 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+// Servir les fichiers statiques (uploads)
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.get('/', (req, res) => {
     res.send('Serveur Express TypeScript opérationnel !');

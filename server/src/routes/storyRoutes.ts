@@ -1,12 +1,15 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middlewares/authMiddleware.ts';
+import { upload } from '../middlewares/uploadMiddleware.ts';
 import {
     createStory,
     getAllStories,
     getStoryById,
     updateStory,
     deleteStory,
-    getMyStories
+    getMyStories,
+    uploadCoverImage,
+    deleteCoverImage
 } from '../controllers/storyControllers.ts';
 import { getPagesByStoryId } from '../controllers/pageControllers.ts';
 
@@ -18,6 +21,10 @@ router.get('/', getAllStories);
 router.get('/:storyId', getStoryById);
 router.get('/:storyId/pages', authMiddleware, getPagesByStoryId);
 router.patch('/:storyId', authMiddleware, updateStory);
-router.delete('/:storyId', authMiddleware, deleteStory); // ✅ L'auteur peut supprimer sa propre histoire
+router.delete('/:storyId', authMiddleware, deleteStory);
+
+// Routes pour l'image de couverture
+router.post('/:storyId/cover', authMiddleware, upload.single('coverImage'), uploadCoverImage);
+router.delete('/:storyId/cover', authMiddleware, deleteCoverImage);
 
 export default router;
