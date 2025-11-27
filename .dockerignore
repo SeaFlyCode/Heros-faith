@@ -1,9 +1,60 @@
 # Node modules
-
-client/node_modules
-client/heros-faith/node_modules
-server/node_modules
+node_modules
+**/node_modules
 
 # Build artifacts
 client/heros-faith/.next
 server/dist
+
+# Git
+.git
+.gitignore
+
+# Tests
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+**/tests
+**/test
+
+# Documentation
+README.md
+*.md
+docs
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+**/*.log
+
+# Cache
+.npm
+.eslintcache
+.cache
+
+# Environment (on les copie explicitement dans le Dockerfile)
+# .env
+# .env.local
+# .env.production
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Ne PAS ignorer le dossier uploads - il contient les fichiers uploadés
+# server/uploads
+
+# Misc
+*.orig
+*.bak
+.editorconfig
+
