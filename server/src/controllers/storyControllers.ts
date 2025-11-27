@@ -43,16 +43,23 @@ export async function createStory(req: AuthenticatedRequest, res: Response, next
   try {
     const { title, content, description, status } = req.body;
 
+    console.log('📝 [Story] Création d\'une nouvelle histoire');
+    console.log('📝 [Story] Données reçues:', { title, description, status });
+
     // Vérifier que le title est fourni
     if (!title) {
+      console.log('❌ [Story] Titre manquant');
       return res.status(400).json({ message: 'Title est requis' });
     }
 
     // Récupérer l'ID de l'utilisateur depuis le JWT
     const author = (req.user as JwtPayload)?.userId;
     if (!author) {
+      console.log('❌ [Story] Utilisateur non authentifié');
       return res.status(401).json({ message: 'Utilisateur non authentifié' });
     }
+
+    console.log('📝 [Story] Auteur:', author);
 
     const story = new Story({
       title,
@@ -61,9 +68,13 @@ export async function createStory(req: AuthenticatedRequest, res: Response, next
       status: status || 'draft',
       author
     });
+
     await story.save();
+    console.log('✅ [Story] Histoire créée avec succès:', story._id);
+
     res.status(201).json(story);
   } catch (err) {
+    console.log('❌ [Story] Erreur lors de la création:', err);
     next(err); // Passe l'erreur au errorHandler
   }
 }
@@ -148,21 +159,36 @@ export async function uploadCoverImage(req: AuthenticatedRequest, res: Response,
         const userId = (req.user as JwtPayload)?.userId;
         const userRole = (req.user as JwtPayload)?.role;
 
+        console.log('📤 [Upload Cover] Début de l\'upload pour l\'histoire:', storyId);
+        console.log('📤 [Upload Cover] Utilisateur:', userId);
+
         // Vérifier qu'un fichier a été uploadé
         if (!req.file) {
+            console.log('❌ [Upload Cover] Aucun fichier fourni');
             return res.status(400).json({ message: 'Aucune image fournie' });
         }
+
+        console.log('📤 [Upload Cover] Fichier reçu:', {
+            filename: req.file.filename,
+            path: req.file.path,
+            size: req.file.size,
+            mimetype: req.file.mimetype
+        });
 
         // Récupérer l'histoire
         const story = await Story.findById(storyId);
         if (!story) {
+            console.log('❌ [Upload Cover] Histoire non trouvée:', storyId);
             // Supprimer le fichier uploadé si l'histoire n'existe pas
             fs.unlinkSync(req.file.path);
             return res.status(404).json({ message: 'Story not found' });
         }
 
+        console.log('✅ [Upload Cover] Histoire trouvée:', story.title);
+
         // Vérifier que l'utilisateur est l'auteur
         if (story.author.toString() !== userId && userRole !== 'admin') {
+            console.log('❌ [Upload Cover] Accès non autorisé');
             // Supprimer le fichier uploadé
             fs.unlinkSync(req.file.path);
             return res.status(403).json({ message: 'Vous n\'êtes pas autorisé à modifier cette histoire' });
@@ -171,25 +197,33 @@ export async function uploadCoverImage(req: AuthenticatedRequest, res: Response,
         // Supprimer l'ancienne image si elle existe
         if (story.coverImage) {
             const oldImagePath = path.join(uploadsPath, path.basename(story.coverImage));
+            console.log('🗑️ [Upload Cover] Suppression de l\'ancienne image:', oldImagePath);
             if (fs.existsSync(oldImagePath)) {
                 fs.unlinkSync(oldImagePath);
+                console.log('✅ [Upload Cover] Ancienne image supprimée');
             }
         }
 
         // Mettre à jour l'histoire avec le chemin de la nouvelle image
-        const imageUrl = `/uploads/${req.file.filename}`;
+        const imageUrl = `/api/uploads/${req.file.filename}`;
+        console.log('💾 [Upload Cover] URL de la nouvelle image:', imageUrl);
+
         const updatedStory = await Story.findByIdAndUpdate(
             storyId,
             { coverImage: imageUrl },
             { new: true }
         );
 
-        res.json({ 
+        console.log('✅ [Upload Cover] Image de couverture mise à jour avec succès');
+        console.log('✅ [Upload Cover] Chemin complet du fichier:', req.file.path);
+
+        res.json({
             message: 'Image uploadée avec succès',
             coverImage: imageUrl,
             story: updatedStory
         });
     } catch (err) {
+        console.log('❌ [Upload Cover] Erreur:', err);
         // Supprimer le fichier en cas d'erreur
         if (req.file) {
             fs.unlinkSync(req.file.path);
