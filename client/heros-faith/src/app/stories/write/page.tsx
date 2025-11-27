@@ -55,12 +55,34 @@ function WriteStoryPageContent() {
       });
     });
 
-    // La page racine est celle qui n'est jamais une cible
-    const rootPage = pages.find(p => !targetPageIds.has(p._id));
+    // Trouver toutes les pages racines (qui ne sont ciblées par aucun choix)
+    const rootPages = pages.filter(p => !targetPageIds.has(p._id));
 
-    if (!rootPage) {
+    if (rootPages.length === 0) {
       console.warn("⚠️ Aucune page racine trouvée, utilisation de la première page");
       return pages;
+    }
+
+    // S'il y a plusieurs pages racines, prendre celle qui a des choix en priorité
+    let rootPage: PageWithChoices;
+
+    if (rootPages.length === 1) {
+      rootPage = rootPages[0];
+      console.log(`🏁 Page racine unique trouvée: ${rootPage._id}`);
+    } else {
+      console.warn(`⚠️ ${rootPages.length} pages racines trouvées, sélection de celle avec des choix...`);
+
+      // Chercher une page racine qui a des choix
+      const rootWithChoices = rootPages.find(p => p.choices.length > 0);
+
+      if (rootWithChoices) {
+        rootPage = rootWithChoices;
+        console.log(`✅ Page racine avec choix sélectionnée: ${rootPage._id} (${rootPage.choices.length} choix)`);
+      } else {
+        // Aucune page racine n'a de choix, prendre la première
+        rootPage = rootPages[0];
+        console.warn(`⚠️ Aucune page racine avec choix, utilisation de la première: ${rootPage._id}`);
+      }
     }
 
     // Trier en parcourant l'arbre en largeur
