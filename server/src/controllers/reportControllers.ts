@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { Report } from '../models/report.ts';
+import { Report } from '../models/report';
 
 export async function createReport(req: Request, res: Response, next: NextFunction) {
   try {

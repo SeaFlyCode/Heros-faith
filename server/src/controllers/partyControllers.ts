@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
-import { Party } from '../models/party.ts';
-import { Page } from '../models/page.ts';
+import { Party } from '../models/party';
+import { Page } from '../models/page';
 
 export async function createParty(req: Request, res: Response, next: NextFunction) {
   try {

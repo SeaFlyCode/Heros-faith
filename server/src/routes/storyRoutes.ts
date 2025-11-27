@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middlewares/authMiddleware.ts';
-import { upload } from '../middlewares/uploadMiddleware.ts';
+import { authMiddleware } from '../middlewares/authMiddleware';
+import { upload } from '../middlewares/uploadMiddleware';
 import {
     createStory,
     getAllStories,
@@ -10,8 +10,8 @@ import {
     getMyStories,
     uploadCoverImage,
     deleteCoverImage
-} from '../controllers/storyControllers.ts';
-import { getPagesByStoryId } from '../controllers/pageControllers.ts';
+} from '../controllers/storyControllers';
+import { getPagesByStoryId } from '../controllers/pageControllers';
 
 const router = Router();
 

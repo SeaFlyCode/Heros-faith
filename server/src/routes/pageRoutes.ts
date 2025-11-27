@@ -1,14 +1,14 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middlewares/authMiddleware.ts';
-import { roleMiddleware } from '../middlewares/roleMiddleware.ts';
+import { authMiddleware } from '../middlewares/authMiddleware';
+import { roleMiddleware } from '../middlewares/roleMiddleware';
 import {
   createPage,
   getAllPages,
   getPageById,
   updatePage,
   deletePage
-} from '../controllers/pageControllers.ts';
-import { getChoicesByPageId } from '../controllers/choiceControllers.ts';
+} from '../controllers/pageControllers';
+import { getChoicesByPageId } from '../controllers/choiceControllers';
 
 const router = Router();
 router.use(authMiddleware);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PrismTransition from "@/components/PrismTransition";
 import StoryTreeVisualization from "@/components/StoryTreeVisualization";
@@ -17,10 +17,12 @@ interface PageWithChoices extends StoryPage {
   choices: StoryChoice[];
 }
 
-export default function WriteStoryPage() {
+function WriteStoryPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const storyId = searchParams.get("storyId");
+
+  // ...existing code...
 
   const [pages, setPages] = useState<PageWithChoices[]>([]);
   const [currentPage, setCurrentPage] = useState<PageWithChoices | null>(null);
@@ -867,3 +869,16 @@ export default function WriteStoryPage() {
     </div>
   );
 }
+
+export default function WriteStoryPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen w-full flex items-center justify-center bg-black">
+        <div className="text-white text-xl">Chargement...</div>
+      </div>
+    }>
+      <WriteStoryPageContent />
+    </Suspense>
+  );
+}
+

@@ -1,9 +1,9 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { JwtPayload } from 'jsonwebtoken';
-import { Story } from '../models/story.ts';
+import { Story } from '../models/story';
 import fs from 'fs';
 import path from 'path';
-import { uploadsPath } from '../middlewares/uploadMiddleware.ts';
+import { uploadsPath } from '../middlewares/uploadMiddleware';
 
 // Extension de l'interface Request pour inclure user et file
 export interface AuthenticatedRequest extends Request {

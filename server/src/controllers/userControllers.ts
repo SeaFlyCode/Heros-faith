@@ -1,18 +1,14 @@
 import type { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { User } from '../models/user.ts';
-import { Story } from '../models/story.ts';
-import { Page } from '../models/page.ts';
-import { Party } from '../models/party.ts';
-import { Rating } from '../models/rating.ts';
-import type { AuthenticatedRequest } from '../middlewares/authMiddleware.ts';
+import { User } from '../models/user';
+import { Story } from '../models/story';
+import { Page } from '../models/page';
+import { Party } from '../models/party';
+import { Rating } from '../models/rating';
+import type { AuthenticatedRequest } from '../middlewares/authMiddleware';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 export async function createUser(req: Request, res: Response, next: NextFunction) {
   try {

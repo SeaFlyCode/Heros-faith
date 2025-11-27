@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
-import { Rating } from '../models/rating.ts';
+import { Rating } from '../models/rating';
 
 export async function createRating(req: Request, res: Response, next: NextFunction) {
   try {

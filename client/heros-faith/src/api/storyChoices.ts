@@ -4,7 +4,7 @@ export interface StoryChoice {
   _id: string;
   page_id: string;
   text: string;
-  target_page_id: string; // Peut être vide si le choix n'est pas encore développé
+  target_page_id?: string; // Optionnel : peut être vide si le choix n'est pas encore développé
   condition?: string;
 }
 

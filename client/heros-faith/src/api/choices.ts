@@ -4,14 +4,14 @@ export interface Choice {
   _id: string;
   page_id: string;
   text: string;
-  target_page_id: string;
+  target_page_id?: string;
   condition?: string;
 }
 
 export interface CreateChoiceRequest {
   page_id: string;
   text: string;
-  target_page_id: string;
+  target_page_id?: string;
   condition?: string;
 }
 

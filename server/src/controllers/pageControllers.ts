@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
-import { Page } from '../models/page.ts';
+import { Page } from '../models/page';
 
 export async function createPage(req: Request, res: Response, next: NextFunction) {
   try {

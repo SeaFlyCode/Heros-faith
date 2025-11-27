@@ -1,13 +1,13 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middlewares/authMiddleware.ts';
-import { roleMiddleware } from '../middlewares/roleMiddleware.ts';
+import { authMiddleware } from '../middlewares/authMiddleware';
+import { roleMiddleware } from '../middlewares/roleMiddleware';
 import {
   createChoice,
   getAllChoices,
   getChoiceById,
   updateChoice,
   deleteChoice
-} from '../controllers/choiceControllers.ts';
+} from '../controllers/choiceControllers';
 
 const router = Router();
 router.use(authMiddleware);

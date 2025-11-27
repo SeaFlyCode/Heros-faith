@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middlewares/authMiddleware.ts';
-import { roleMiddleware } from '../middlewares/roleMiddleware.ts';
+import { authMiddleware } from '../middlewares/authMiddleware';
+import { roleMiddleware } from '../middlewares/roleMiddleware';
 import {
   createParty,
   getAllParties,
@@ -10,7 +10,7 @@ import {
   getPartyProgress,
   updateParty,
   deleteParty
-} from '../controllers/partyControllers.ts';
+} from '../controllers/partyControllers';
 
 const router = Router();
 router.use(authMiddleware);

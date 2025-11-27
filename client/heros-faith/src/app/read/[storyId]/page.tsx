@@ -134,6 +134,70 @@ const RatingModal = ({
   );
 };
 
+// Modal de reprise de lecture
+const ResumeModal = ({
+  isOpen,
+  onResume,
+  onRestart,
+  progressLength,
+}: {
+  isOpen: boolean;
+  onResume: () => void;
+  onRestart: () => void;
+  progressLength: number;
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+
+      {/* Modal */}
+      <div className="relative bg-gradient-to-br from-gray-900 to-black border border-white/20 rounded-3xl p-8 max-w-md w-full shadow-2xl">
+        {/* Icône */}
+        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center">
+          <svg className="w-8 h-8 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        </div>
+
+        {/* Titre */}
+        <h2 className="text-2xl font-bold text-white text-center mb-2">
+          Reprendre la lecture ?
+        </h2>
+        <p className="text-white/60 text-center mb-6">
+          Vous avez déjà lu {progressLength} page{progressLength > 1 ? 's' : ''} de cette histoire.
+        </p>
+
+        {/* Boutons */}
+        <div className="space-y-3">
+          <button
+            onClick={onResume}
+            className="w-full px-6 py-4 bg-cyan-500/30 hover:bg-cyan-500/40 border border-cyan-400/50 text-white font-semibold rounded-xl transition-all duration-300 flex items-center justify-center gap-3"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Continuer où je me suis arrêté
+          </button>
+
+          <button
+            onClick={onRestart}
+            className="w-full px-6 py-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white/70 hover:text-white font-medium rounded-xl transition-all duration-300 flex items-center justify-center gap-3"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Recommencer depuis le début
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function ReadStoryPage() {
   const router = useRouter();
   const params = useParams();
@@ -155,6 +219,8 @@ export default function ReadStoryPage() {
   const [error, setError] = useState("");
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [hasCompletedEnding, setHasCompletedEnding] = useState(false);
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [resumeData, setResumeData] = useState<{ party: any; pagesData: StoryPage[] } | null>(null);
 
   // Mettre à jour la ref quand partyId change
   useEffect(() => {
@@ -183,10 +249,20 @@ export default function ReadStoryPage() {
       setStory(storyData);
       console.log("✅ Histoire chargée:", storyData.title);
 
+      // Vérifier si l'utilisateur est l'auteur
+      const authorId = typeof storyData.author === 'object' ? storyData.author._id : storyData.author;
+      const isAuthor = user && authorId === user._id;
+      console.log("👤 Utilisateur auteur:", isAuthor);
+
       // Charger toutes les pages de l'histoire
       const pagesData = await storyPagesApi.getByStoryId(storyId);
       setPages(pagesData);
       console.log("✅ Pages chargées:", pagesData.length);
+      console.log("📄 Liste des pages:", pagesData.map(p => ({
+        id: p._id,
+        content_preview: p.content.substring(0, 50) + '...',
+        is_ending: p.is_ending
+      })));
 
       // Créer ou récupérer une partie pour cette histoire
       let currentParty: any = null;
@@ -205,6 +281,17 @@ export default function ReadStoryPage() {
             setPartyId(existingParty._id);
             currentParty = existingParty;
             console.log("📚 Partie existante trouvée, progression:", existingParty.path.length, "pages visitées");
+
+            // Si l'utilisateur est l'auteur ET qu'il a une progression
+            // On réinitialise automatiquement car c'est probablement de l'écriture
+            if (isAuthor && existingParty.path.length > 0) {
+              console.log("👤 Vous êtes l'auteur - réinitialisation automatique de la progression");
+              await partiesApi.update(existingParty._id, {
+                path: [],
+                end_date: undefined,
+              }).catch(err => console.error("Erreur lors de la réinitialisation:", err));
+              currentParty.path = []; // Réinitialiser localement aussi
+            }
           } else {
             // Créer une nouvelle partie
             const newParty = await partiesApi.create({
@@ -222,8 +309,54 @@ export default function ReadStoryPage() {
 
       // Trouver la première page ou reprendre la dernière page visitée
       if (pagesData.length > 0) {
-        // Si la partie a un historique, reprendre à la dernière page
+        let shouldResume = false;
+        let canResume = false;
+
+        // Si la partie a un historique, vérifier s'il est valide pour une reprise
         if (currentParty && currentParty.path && currentParty.path.length > 0) {
+          const lastPageId = currentParty.path[currentParty.path.length - 1];
+          const lastPageIdStr = typeof lastPageId === 'object' ? lastPageId.toString() : lastPageId;
+
+          // Vérifier si la dernière page visitée a des choix ou est une fin
+          const lastPage = pagesData.find(p => p._id === lastPageIdStr);
+
+          if (lastPage) {
+            // Charger les choix de la dernière page
+            const lastPageChoices = await storyChoicesApi.getByPageId(lastPageIdStr).catch(() => []);
+
+            // On peut reprendre si :
+            // - C'est une page de fin (lecture terminée)
+            // - La page a des choix (lecture en cours)
+            // - C'est la première page (début de lecture)
+            const isFirstPage = (await findFirstPage(pagesData))?._id === lastPageIdStr;
+
+            if (lastPage.is_ending || lastPageChoices.length > 0 || isFirstPage) {
+              canResume = true;
+              console.log("✅ Progression valide détectée (page", currentParty.path.length, ")");
+              console.log("   - Page de fin:", lastPage.is_ending);
+              console.log("   - Nombre de choix:", lastPageChoices.length);
+              console.log("   - Première page:", isFirstPage);
+
+              // Afficher la modal pour demander à l'utilisateur
+              setResumeData({ party: currentParty, pagesData });
+              setShowResumeModal(true);
+              setIsLoading(false);
+              return; // Arrêter ici, l'utilisateur choisira
+            } else {
+              console.log("⚠️ Historique invalide détecté (page sans choix, probablement créée en mode écriture)");
+              console.log("   - Réinitialisation automatique de la progression...");
+
+              // Réinitialiser la progression dans la base de données
+              if (partyIdRef.current) {
+                await partiesApi.update(partyIdRef.current, {
+                  path: [],
+                }).catch(err => console.error("Erreur lors de la réinitialisation:", err));
+              }
+            }
+          }
+        }
+
+        if (shouldResume && currentParty) {
           const lastPageId = currentParty.path[currentParty.path.length - 1];
           const lastPageIdStr = typeof lastPageId === 'object' ? lastPageId.toString() : lastPageId;
 
@@ -236,7 +369,8 @@ export default function ReadStoryPage() {
 
           await navigateToPage(lastPageIdStr, pagesData);
         } else {
-          // Sinon, commencer au début
+          // Commencer au début
+          console.log("🆕 Démarrage d'une nouvelle lecture depuis le début");
           const firstPage = await findFirstPage(pagesData);
           if (firstPage) {
             await navigateToPage(firstPage._id, pagesData);
@@ -263,6 +397,8 @@ export default function ReadStoryPage() {
     if (pagesData.length === 0) return null;
 
     try {
+      console.log(`🔍 Recherche de la page racine parmi ${pagesData.length} pages...`);
+
       // Charger tous les choix pour toutes les pages
       const allChoicesPromises = pagesData.map(page =>
         storyChoicesApi.getByPageId(page._id).catch(() => [])
@@ -271,6 +407,7 @@ export default function ReadStoryPage() {
       const allChoices = allChoicesArrays.flat();
 
       console.log(`📋 Total de choix dans l'histoire: ${allChoices.length}`);
+      console.log(`📋 Détails de tous les choix:`, allChoices);
 
       // Trouver les IDs de toutes les pages ciblées
       const targetedPageIds = new Set(
@@ -279,17 +416,42 @@ export default function ReadStoryPage() {
           .filter(id => id) // Filtrer les undefined/null
       );
 
-      // La première page est celle qui n'est ciblée par aucun choix
-      const firstPage = pagesData.find(page => !targetedPageIds.has(page._id));
+      console.log(`🎯 Pages ciblées par des choix:`, Array.from(targetedPageIds));
+      console.log(`📄 IDs de toutes les pages:`, pagesData.map(p => p._id));
 
-      if (firstPage) {
-        console.log(`🏁 Page racine trouvée: ${firstPage._id}`);
-        return firstPage;
+      // Trouver toutes les pages qui ne sont ciblées par aucun choix
+      const rootPages = pagesData.filter(page => !targetedPageIds.has(page._id));
+
+      console.log(`🔍 Pages racines candidates: ${rootPages.length}`);
+      rootPages.forEach(p => console.log(`   - ${p._id}`));
+
+      if (rootPages.length === 0) {
+        console.warn("⚠️ Aucune page racine trouvée, utilisation de la première page");
+        return pagesData[0];
       }
 
-      // Fallback: si aucune page racine n'est trouvée, prendre la première
-      console.warn("⚠️ Aucune page racine trouvée, utilisation de la première page");
-      return pagesData[0];
+      if (rootPages.length === 1) {
+        console.log(`🏁 Page racine unique trouvée: ${rootPages[0]._id}`);
+        return rootPages[0];
+      }
+
+      // S'il y a plusieurs pages racines (problème de structure),
+      // prendre celle qui a des choix en priorité
+      console.warn(`⚠️ Plusieurs pages racines trouvées (${rootPages.length}), recherche de celle avec des choix...`);
+
+      for (const page of rootPages) {
+        const pageChoices = await storyChoicesApi.getByPageId(page._id).catch(() => []);
+        console.log(`   - ${page._id}: ${pageChoices.length} choix`);
+
+        if (pageChoices.length > 0) {
+          console.log(`✅ Page racine avec choix sélectionnée: ${page._id}`);
+          return page;
+        }
+      }
+
+      // Si aucune page racine n'a de choix, prendre la première
+      console.warn("⚠️ Aucune page racine avec choix, utilisation de la première page racine");
+      return rootPages[0];
     } catch (err) {
       console.error("❌ Erreur lors de la recherche de la première page:", err);
       return pagesData[0];
@@ -312,8 +474,14 @@ export default function ReadStoryPage() {
       console.log("📄 Navigation vers la page:", pageId);
       setCurrentPage(page);
 
-      // Ajouter à l'historique
+      // Ajouter à l'historique seulement si ce n'est pas déjà la dernière page
       setPageHistory(prev => {
+        // Si c'est déjà la dernière page de l'historique, ne pas l'ajouter à nouveau
+        if (prev.length > 0 && prev[prev.length - 1] === pageId) {
+          console.log("⏭️ Page déjà dans l'historique, pas de duplication");
+          return prev;
+        }
+
         const newHistory = [...prev, pageId];
 
         // Mettre à jour la progression dans la partie
@@ -323,7 +491,7 @@ export default function ReadStoryPage() {
           }).catch(err => {
             console.error("❌ Erreur lors de la mise à jour de la progression:", err);
           });
-          console.log("💾 Progression enregistrée: page", newHistory.length, "/", pages.length);
+          console.log("💾 Progression enregistrée: page", newHistory.length);
         }
 
         return newHistory;
@@ -331,8 +499,16 @@ export default function ReadStoryPage() {
 
       // Charger les choix de cette page
       if (!page.is_ending) {
+        console.log(`🔍 Récupération des choix pour la page ${pageId}...`);
         const pageChoices = await storyChoicesApi.getByPageId(pageId);
         console.log(`📋 Choix chargés pour la page ${pageId}:`, pageChoices.length);
+        console.log(`📋 Détails des choix:`, pageChoices);
+
+        // Vérifier si les choix ont des target_page_id
+        pageChoices.forEach((choice, index) => {
+          console.log(`  Choix ${index + 1}: "${choice.text}" -> target_page_id: ${choice.target_page_id || 'AUCUN'}`);
+        });
+
         setChoices(pageChoices);
       } else {
         setChoices([]);
@@ -429,6 +605,7 @@ export default function ReadStoryPage() {
   const handleRestart = async () => {
     setPageHistory([]);
     setHasCompletedEnding(false);
+    setShowResumeModal(false);
 
     // Réinitialiser la progression dans la base de données
     if (partyIdRef.current) {
@@ -448,6 +625,48 @@ export default function ReadStoryPage() {
       if (firstPage) {
         navigateToPage(firstPage._id);
       }
+    }
+  };
+
+  // Reprendre là où on s'est arrêté
+  const handleResumeReading = async () => {
+    if (!resumeData) return;
+
+    const { party, pagesData } = resumeData;
+    const lastPageId = party.path[party.path.length - 1];
+    const lastPageIdStr = typeof lastPageId === 'object' ? lastPageId.toString() : lastPageId;
+
+    console.log("🔄 Reprise de la lecture à la page", party.path.length);
+
+    // Restaurer l'historique complet
+    setPageHistory(party.path.map((id: any) =>
+      typeof id === 'object' ? id.toString() : id
+    ));
+
+    setShowResumeModal(false);
+    await navigateToPage(lastPageIdStr, pagesData);
+  };
+
+  // Recommencer depuis le début (depuis la modal)
+  const handleStartFresh = async () => {
+    if (!resumeData) return;
+
+    const { pagesData } = resumeData;
+
+    // Réinitialiser la progression
+    if (partyIdRef.current) {
+      await partiesApi.update(partyIdRef.current, {
+        path: [],
+      }).catch(err => console.error("Erreur lors de la réinitialisation:", err));
+    }
+
+    setPageHistory([]);
+    setShowResumeModal(false);
+
+    console.log("🆕 Nouvelle lecture depuis le début");
+    const firstPage = await findFirstPage(pagesData);
+    if (firstPage) {
+      await navigateToPage(firstPage._id, pagesData);
     }
   };
 
@@ -546,9 +765,26 @@ export default function ReadStoryPage() {
             <p className="text-white/50 text-sm">Par {getAuthorDisplayName(story.author)}</p>
           </div>
 
-          {/* Progression */}
-          <div className="text-white/50 text-sm">
-            Page {pageHistory.length}
+          {/* Boutons actions */}
+          <div className="flex items-center gap-3">
+            {/* Bouton recommencer */}
+            {pageHistory.length > 1 && (
+              <button
+                onClick={handleRestart}
+                className="flex items-center gap-1 text-white/70 hover:text-white transition-colors"
+                title="Recommencer depuis le début"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span className="hidden sm:inline text-sm">Recommencer</span>
+              </button>
+            )}
+
+            {/* Progression */}
+            <div className="text-white/50 text-sm">
+              Page {pageHistory.length}
+            </div>
           </div>
         </div>
       </header>
@@ -626,8 +862,21 @@ export default function ReadStoryPage() {
 
               {/* Message si pas de choix et pas une fin */}
               {!currentPage.is_ending && choices.length === 0 && (
-                <div className="text-center py-8">
+                <div className="text-center py-8 space-y-4">
                   <p className="text-white/50 italic">Cette page n'a pas encore de suite...</p>
+                  {pageHistory.length > 1 && (
+                    <button
+                      onClick={handleGoBack}
+                      className="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white/80 hover:text-white font-medium rounded-xl transition-all"
+                    >
+                      ← Retour à la page précédente
+                    </button>
+                  )}
+                  {pageHistory.length === 1 && (
+                    <div className="text-white/40 text-sm mt-2">
+                      Cette histoire semble incomplète. Contactez l'auteur.
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -680,6 +929,14 @@ export default function ReadStoryPage() {
         onClose={() => setShowRatingModal(false)}
         onSubmit={handleRatingSubmit}
         storyTitle={story?.title || "cette histoire"}
+      />
+
+      {/* Modal de reprise */}
+      <ResumeModal
+        isOpen={showResumeModal}
+        onResume={handleResumeReading}
+        onRestart={handleStartFresh}
+        progressLength={resumeData?.party?.path?.length || 0}
       />
     </div>
   );

@@ -1,26 +1,21 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { errorHandler } from './middlewares/errorHandler.ts';
-import { connectDB } from './config/database.ts';
+import { errorHandler } from './middlewares/errorHandler';
+import { connectDB } from './config/database';
 import dotenv from 'dotenv';
 
 // Import des routes
-import userRoutes from './routes/userRoutes.ts';
-import storyRoutes from './routes/storyRoutes.ts';
-import pageRoutes from './routes/pageRoutes.ts';
-import choiceRoutes from './routes/choiceRoutes.ts';
-import noeudRoutes from './routes/noeudRoutes.ts';
-import partyRoutes from './routes/partyRoutes.ts';
-import ratingRoutes from './routes/ratingRoutes.ts';
-import reportRoutes from './routes/reportRoutes.ts';
+import userRoutes from './routes/userRoutes';
+import storyRoutes from './routes/storyRoutes';
+import pageRoutes from './routes/pageRoutes';
+import choiceRoutes from './routes/choiceRoutes';
+import partyRoutes from './routes/partyRoutes';
+import ratingRoutes from './routes/ratingRoutes';
+import reportRoutes from './routes/reportRoutes';
 
 dotenv.config();
 
-// Obtenir __dirname en ESM
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -77,7 +72,6 @@ app.use('/api/users', userRoutes);
 app.use('/api/stories', storyRoutes);
 app.use('/api/pages', pageRoutes);
 app.use('/api/choices', choiceRoutes);
-app.use('/api/noeuds', noeudRoutes);
 app.use('/api/parties', partyRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/reports', reportRoutes);
@@ -94,8 +88,10 @@ async function startServer() {
     }
 }
 
-await startServer();
+(async () => {
+    await startServer();
 
-app.listen(PORT, () => {
-    console.log(`Serveur démarré sur le port ${PORT}`);
-});
+    app.listen(PORT, () => {
+        console.log(`Serveur démarré sur le port ${PORT}`);
+    });
+})();

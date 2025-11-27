@@ -1,0 +1,9 @@
+# Node modules
+
+client/node_modules
+client/heros-faith/node_modules
+server/node_modules
+
+# Build artifacts
+client/heros-faith/.next
+server/dist

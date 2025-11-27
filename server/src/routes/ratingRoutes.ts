@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middlewares/authMiddleware.ts';
-import { roleMiddleware } from '../middlewares/roleMiddleware.ts';
+import { authMiddleware } from '../middlewares/authMiddleware';
+import { roleMiddleware } from '../middlewares/roleMiddleware';
 import {
   createRating,
   getAllRatings,
@@ -10,7 +10,7 @@ import {
   getUserRatingForStory,
   updateRating,
   deleteRating
-} from '../controllers/ratingControllers.ts';
+} from '../controllers/ratingControllers';
 
 const router = Router();
 router.use(authMiddleware);

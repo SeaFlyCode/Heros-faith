@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middlewares/authMiddleware.ts';
-import { roleMiddleware } from '../middlewares/roleMiddleware.ts';
-import { upload } from '../middlewares/uploadMiddleware.ts';
+import { authMiddleware } from '../middlewares/authMiddleware';
+import { roleMiddleware } from '../middlewares/roleMiddleware';
+import { upload } from '../middlewares/uploadMiddleware';
 import {
   createUser,
   login,
@@ -12,7 +12,7 @@ import {
   deleteUser,
   uploadProfilePicture,
   deleteProfilePicture
-} from '../controllers/userControllers.ts';
+} from '../controllers/userControllers';
 
 const router = Router();
 
