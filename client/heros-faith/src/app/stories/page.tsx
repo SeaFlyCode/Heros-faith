@@ -4,6 +4,10 @@ import { useRouter } from "next/navigation";
 import PrismTransition from "@/components/PrismTransition";
 import { storiesApi, type Story } from "@/api";
 import { useAuth } from "@/hooks/useAuth";
+
+// URL de base de l'API pour les images
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000';
+
 export default function StoriesPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -112,20 +116,66 @@ export default function StoriesPage() {
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-                {stories.map((story) => (
-                  <div key={story._id} className="group relative bg-white/5 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/10 overflow-hidden hover:scale-[1.02] transition-all duration-300 cursor-pointer">
-                    <div className="relative w-full h-52 flex items-center justify-center p-6">
-                      <button onClick={(e) => { e.stopPropagation(); handleEditStory(story._id); }} className="absolute top-4 right-4 bg-white/5 hover:bg-white/10 backdrop-blur-sm p-2.5 rounded-full transition-all duration-200 border border-white/10 hover:border-cyan-400/50 group/btn z-10" aria-label={`Éditer ${story.title}`}>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white group-hover/btn:text-cyan-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                      </button>
-                      <h2 className="text-2xl font-semibold text-white font-montserrat text-center group-hover:text-cyan-400 transition-colors">
-                        {story.title}
-                      </h2>
+                {stories.map((story) => {
+                  const coverImageUrl = story.coverImage 
+                    ? `${API_BASE_URL}${story.coverImage}`
+                    : null;
+                  
+                  return (
+                    <div key={story._id} className="group relative bg-white/5 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/10 overflow-hidden hover:scale-[1.02] transition-all duration-300 cursor-pointer" onClick={() => handleEditStory(story._id)}>
+                      {/* Image de couverture ou placeholder */}
+                      <div className="relative w-full h-48 bg-gradient-to-br from-cyan-900/30 to-blue-900/30">
+                        {coverImageUrl ? (
+                          <img
+                            src={coverImageUrl}
+                            alt={`Couverture de ${story.title}`}
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center text-white/30">
+                            <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        )}
+                        
+                        {/* Badge de statut */}
+                        <div className="absolute top-3 left-3">
+                          <span className={`px-3 py-1 text-xs font-medium rounded-full backdrop-blur-sm ${
+                            story.status === 'published' 
+                              ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
+                              : 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
+                          }`}>
+                            {story.status === 'published' ? 'Publiée' : 'Brouillon'}
+                          </span>
+                        </div>
+
+                        {/* Bouton éditer */}
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleEditStory(story._id); }} 
+                          className="absolute top-3 right-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm p-2.5 rounded-full transition-all duration-200 border border-white/20 hover:border-cyan-400/50 group/btn z-10" 
+                          aria-label={`Éditer ${story.title}`}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white group-hover/btn:text-cyan-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      {/* Informations de l'histoire */}
+                      <div className="p-5">
+                        <h2 className="text-xl font-semibold text-white font-montserrat group-hover:text-cyan-400 transition-colors mb-2">
+                          {story.title}
+                        </h2>
+                        {story.description && (
+                          <p className="text-white/60 text-sm line-clamp-2">
+                            {story.description}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <div className="flex justify-center">
                 <button onClick={handleCreateStory} className="group relative w-full max-w-2xl bg-cyan-500/30 hover:bg-cyan-500/40 border border-cyan-400/50 text-white font-bold py-5 rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:shadow-cyan-500/50 hover:scale-[1.02] active:scale-[0.98]">

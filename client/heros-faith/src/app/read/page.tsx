@@ -6,6 +6,9 @@ import PrismTransition from "@/components/PrismTransition";
 import { storiesApi, partiesApi, ratingsApi, type Story, type ApiError } from "@/api";
 import { useAuth } from "@/hooks/useAuth";
 
+// URL de base de l'API pour les images
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000';
+
 // Interface pour les histoires enrichies avec progression et rating
 interface EnrichedStory extends Story {
   progress?: number;
@@ -23,6 +26,11 @@ const StoryCard = ({ story, showProgress = false }: { story: EnrichedStory; show
     router.push(`/read/${storyId}`);
   };
 
+  // Construire l'URL complète de l'image
+  const coverImageUrl = story.coverImage 
+    ? `${API_BASE_URL}${story.coverImage}`
+    : null;
+
   return (
     <div
       onClick={() => handleStoryClick(story._id)}
@@ -30,12 +38,21 @@ const StoryCard = ({ story, showProgress = false }: { story: EnrichedStory; show
     >
       {/* Image de couverture */}
       <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-gradient-to-br from-cyan-900/30 to-blue-900/30 border border-white/10">
-        {/* Placeholder pour l'image */}
-        <div className="absolute inset-0 flex items-center justify-center text-white/30">
-          <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-          </svg>
-        </div>
+        {coverImageUrl ? (
+          /* Image de couverture réelle */
+          <img
+            src={coverImageUrl}
+            alt={`Couverture de ${story.title}`}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : (
+          /* Placeholder si pas d'image */
+          <div className="absolute inset-0 flex items-center justify-center text-white/30">
+            <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          </div>
+        )}
 
         {/* Overlay au survol */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
