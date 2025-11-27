@@ -34,6 +34,11 @@ function WriteStoryPageContent() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  // États pour le modal de lien vers une page existante
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkingChoiceId, setLinkingChoiceId] = useState<string | null>(null);
+  const [linkSearchQuery, setLinkSearchQuery] = useState("");
 
   // Fonction pour trier les pages dans l'ordre de l'arbre (racine en premier)
   const sortPagesTree = (pages: PageWithChoices[]): PageWithChoices[] => {
@@ -349,6 +354,67 @@ function WriteStoryPageContent() {
       const apiError = err as ApiError;
       console.error("❌ Erreur lors du développement:", apiError);
       setError(apiError.message || "Erreur lors du développement du choix");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Ouvrir le modal pour lier un choix à une page existante
+  const handleOpenLinkModal = (choiceId: string) => {
+    setLinkingChoiceId(choiceId);
+    setLinkSearchQuery("");
+    setShowLinkModal(true);
+  };
+
+  // Lier un choix à une page existante
+  const handleLinkToExistingPage = async (targetPageId: string) => {
+    if (!currentPage || !linkingChoiceId) return;
+
+    const choice = currentPage.choices.find(c => c._id === linkingChoiceId);
+    if (!choice || !choice.text.trim()) {
+      setError("Le texte du choix ne peut pas être vide");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+
+      let savedChoice: StoryChoice;
+      if (choice._id.startsWith('temp-')) {
+        // Créer le choix avec la page cible existante
+        savedChoice = await storyChoicesApi.create({
+          page_id: currentPage._id,
+          text: choice.text,
+          target_page_id: targetPageId,
+        });
+      } else {
+        // Mettre à jour le choix existant
+        savedChoice = await storyChoicesApi.update(choice._id, {
+          text: choice.text,
+          target_page_id: targetPageId,
+        });
+      }
+
+      console.log("✅ Choix lié à la page existante:", savedChoice);
+
+      // Mettre à jour la page actuelle avec le choix sauvegardé
+      const updatedCurrentPage = {
+        ...currentPage,
+        choices: currentPage.choices.map(c =>
+          c._id === linkingChoiceId ? savedChoice : c
+        )
+      };
+
+      setPages(pages.map(p => p._id === currentPage._id ? updatedCurrentPage : p));
+      setCurrentPage(updatedCurrentPage);
+
+      // Fermer le modal
+      setShowLinkModal(false);
+      setLinkingChoiceId(null);
+    } catch (err) {
+      const apiError = err as ApiError;
+      console.error("❌ Erreur lors du lien:", apiError);
+      setError(apiError.message || "Erreur lors du lien vers la page");
     } finally {
       setIsSaving(false);
     }
@@ -760,14 +826,26 @@ function WriteStoryPageContent() {
                                   Choix développé
                                 </div>
                               ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDevelopChoice(choice._id)}
-                                  disabled={!choice.text.trim() || isSaving}
-                                  className="w-full px-3 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-sm rounded-xl border border-cyan-400/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                                >
-                                  Développer →
-                                </button>
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDevelopChoice(choice._id)}
+                                    disabled={!choice.text.trim() || isSaving}
+                                    className="flex-1 px-3 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-sm rounded-xl border border-cyan-400/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Créer une nouvelle page"
+                                  >
+                                    Nouvelle page →
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenLinkModal(choice._id)}
+                                    disabled={!choice.text.trim() || isSaving || pages.length <= 1}
+                                    className="flex-1 px-3 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-sm rounded-xl border border-purple-400/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Lier à une page existante"
+                                  >
+                                    🔗 Lier
+                                  </button>
+                                </div>
                               )}
                             </div>
                           ))}
@@ -863,6 +941,108 @@ function WriteStoryPageContent() {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de lien vers une page existante */}
+      {showLinkModal && (
+        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white/10 backdrop-blur-xl rounded-3xl border border-purple-500/50 p-8 max-w-lg w-full shadow-2xl max-h-[80vh] flex flex-col">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
+                <span className="text-2xl">🔗</span>
+              </div>
+              <h2 className="text-white text-2xl font-bold">Lier à une page existante</h2>
+            </div>
+
+            <p className="text-white/70 mb-4">
+              Sélectionnez la page vers laquelle ce choix doit mener :
+            </p>
+
+            {/* Barre de recherche */}
+            <div className="relative mb-4">
+              <input
+                type="text"
+                value={linkSearchQuery}
+                onChange={(e) => setLinkSearchQuery(e.target.value)}
+                placeholder="Rechercher une page..."
+                className="w-full px-4 py-3 pl-10 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400/50 transition-all"
+              />
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+
+            {/* Liste des pages */}
+            <div className="flex-1 overflow-y-auto space-y-2 mb-4">
+              {pages
+                .filter(page => {
+                  // Exclure la page actuelle
+                  if (page._id === currentPage?._id) return false;
+                  // Filtrer par recherche
+                  if (linkSearchQuery.trim()) {
+                    const nodeLabel = convertPagesToNodes().find(n => n.id === page._id)?.label || "";
+                    const searchLower = linkSearchQuery.toLowerCase();
+                    return (
+                      page.content.toLowerCase().includes(searchLower) ||
+                      nodeLabel.toLowerCase().includes(searchLower)
+                    );
+                  }
+                  return true;
+                })
+                .map(page => {
+                  const nodeInfo = convertPagesToNodes().find(n => n.id === page._id);
+                  return (
+                    <button
+                      key={page._id}
+                      onClick={() => handleLinkToExistingPage(page._id)}
+                      className="w-full text-left p-4 bg-white/5 hover:bg-purple-500/20 border border-white/10 hover:border-purple-400/50 rounded-xl transition-all group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                          {page.is_ending ? (
+                            <span className="text-sm">🏁</span>
+                          ) : (
+                            <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-medium truncate">
+                            {nodeInfo?.label || "Page"}
+                            {page.is_ending && <span className="ml-2 text-xs text-green-400">(Fin)</span>}
+                          </p>
+                          <p className="text-white/50 text-sm truncate">
+                            {page.content || "Page vide"}
+                          </p>
+                        </div>
+                        <svg className="w-5 h-5 text-white/30 group-hover:text-purple-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </button>
+                  );
+                })}
+              
+              {pages.filter(p => p._id !== currentPage?._id).length === 0 && (
+                <p className="text-white/50 text-center py-8">
+                  Aucune autre page disponible. Créez d&apos;abord d&apos;autres pages.
+                </p>
+              )}
+            </div>
+
+            {/* Bouton annuler */}
+            <button
+              onClick={() => {
+                setShowLinkModal(false);
+                setLinkingChoiceId(null);
+              }}
+              className="w-full px-4 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-2xl border border-white/20 transition-all"
+            >
+              Annuler
+            </button>
           </div>
         </div>
       )}
