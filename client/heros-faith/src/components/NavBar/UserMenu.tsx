@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { getProfileImageUrl } from '@/utils/imageUrl';
 
 interface UserMenuProps {
   username: string;
@@ -16,7 +17,7 @@ export default function UserMenu({ username, profilePicture, onLogout }: UserMen
   // Log pour tracer la photo de profil
   useEffect(() => {
     if (profilePicture) {
-      const imageUrl = `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000'}/uploads/${profilePicture}`;
+      const imageUrl = getProfileImageUrl(profilePicture);
       console.log('📸 [NavBar] Chargement de la photo de profil:', {
         profilePicture,
         imageUrl,
@@ -59,7 +60,7 @@ export default function UserMenu({ username, profilePicture, onLogout }: UserMen
         <div className="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center overflow-hidden">
           {profilePicture ? (
             <img
-              src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000'}/uploads/${profilePicture}`}
+              src={getProfileImageUrl(profilePicture) || ''}
               alt="Photo de profil"
               className="w-full h-full object-cover"
             />
