@@ -203,7 +203,7 @@ export default function HowItWorksPage() {
           <div className="flex justify-center gap-4">
             <button
               onClick={() => setActiveTab("reader")}
-              className={`px-8 py-3 rounded-full font-semibold transition-all duration-300 ${
+              className={`px-8 py-3 rounded-full font-semibold transition-all duration-300 cursor-pointer ${
                 activeTab === "reader"
                   ? "bg-cyan-500/30 text-white border border-cyan-400/50 shadow-lg shadow-cyan-500/30"
                   : "bg-cyan-500/10 text-white/70 border border-cyan-400/20 hover:bg-cyan-500/20 hover:text-white hover:border-cyan-400/30"
@@ -213,7 +213,7 @@ export default function HowItWorksPage() {
             </button>
             <button
               onClick={() => setActiveTab("writer")}
-              className={`px-8 py-3 rounded-full font-semibold transition-all duration-300 ${
+              className={`px-8 py-3 rounded-full font-semibold transition-all duration-300 cursor-pointer ${
                 activeTab === "writer"
                   ? "bg-cyan-500/30 text-white border border-cyan-400/50 shadow-lg shadow-cyan-500/30"
                   : "bg-cyan-500/10 text-white/70 border border-cyan-400/20 hover:bg-cyan-500/20 hover:text-white hover:border-cyan-400/30"

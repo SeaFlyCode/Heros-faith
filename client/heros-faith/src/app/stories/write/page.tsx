@@ -568,7 +568,7 @@ export default function WriteStoryPage() {
       <button
         type="button"
         onClick={() => router.push("/stories")}
-        className="absolute top-6 left-6 z-20 group flex items-center gap-2 bg-white/5 hover:bg-white/10 backdrop-blur-lg text-white font-medium px-4 py-2 rounded-full shadow-lg transition-all duration-300 border border-white/10 hover:border-white/20"
+        className="fixed top-24 left-6 z-[60] group flex items-center gap-2 bg-white/5 hover:bg-white/10 backdrop-blur-lg text-white font-medium px-4 py-2 rounded-full shadow-lg transition-all duration-300 border border-white/10 hover:border-white/20"
         aria-label="Retour à mes histoires"
       >
         <svg
@@ -584,7 +584,7 @@ export default function WriteStoryPage() {
 
       {/* Arborescence en haut à droite */}
       {currentPage && pages.length > 0 && (
-        <div className="absolute top-6 right-6 z-20">
+        <div className="fixed top-24 right-6 z-[60]">
           <StoryTreeVisualization
             nodes={convertPagesToNodes()}
             currentNode={convertPagesToNodes().find((n) => n.id === currentPage._id)}
@@ -659,7 +659,7 @@ export default function WriteStoryPage() {
             <button
               onClick={() => setShowDeleteConfirm(true)}
               disabled={isDeleting}
-              className="px-4 py-1.5 bg-red-500/20 hover:bg-red-500/30 border border-red-400/50 text-red-300 text-sm rounded-full font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-1.5 bg-red-500/20 hover:bg-red-500/30 border border-red-400/50 text-red-300 text-sm rounded-full font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
               title="Supprimer l'histoire"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -762,7 +762,7 @@ export default function WriteStoryPage() {
                                   type="button"
                                   onClick={() => handleDevelopChoice(choice._id)}
                                   disabled={!choice.text.trim() || isSaving}
-                                  className="w-full px-3 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-sm rounded-xl border border-cyan-400/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                  className="w-full px-3 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-sm rounded-xl border border-cyan-400/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                                 >
                                   Développer →
                                 </button>
@@ -782,7 +782,7 @@ export default function WriteStoryPage() {
                       type="button"
                       onClick={handleSetAsEnd}
                       disabled={isSaving}
-                      className="flex-1 px-4 py-3 bg-green-500/20 hover:bg-green-500/30 text-green-300 font-semibold rounded-2xl border border-green-400/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 px-4 py-3 bg-green-500/20 hover:bg-green-500/30 text-green-300 font-semibold rounded-2xl border border-green-400/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
                       Marquer comme fin
                     </button>
@@ -792,7 +792,7 @@ export default function WriteStoryPage() {
                       type="button"
                       onClick={handleUnsetAsEnd}
                       disabled={isSaving}
-                      className="flex-1 px-4 py-3 bg-green-500/20 hover:bg-orange-500/30 text-green-300 hover:text-orange-300 font-semibold rounded-2xl border border-green-400/30 hover:border-orange-400/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      className="flex-1 px-4 py-3 bg-green-500/20 hover:bg-orange-500/30 text-green-300 hover:text-orange-300 font-semibold rounded-2xl border border-green-400/30 hover:border-orange-400/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />

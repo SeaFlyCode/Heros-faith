@@ -346,14 +346,14 @@ export default function StoryTreeVisualization({
             <button
               onClick={zoomOut}
               disabled={zoom <= 0.4}
-              className="w-5 h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-cyan-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-xs font-bold"
+              className="w-5 h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-cyan-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-xs font-bold cursor-pointer"
               title="Dézoomer"
             >
               −
             </button>
             <button
               onClick={resetZoom}
-              className="px-1.5 h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-cyan-300 transition-all text-[9px] font-medium"
+              className="px-1.5 h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-cyan-300 transition-all text-[9px] font-medium cursor-pointer"
               title="Réinitialiser le zoom"
             >
               {Math.round(zoom * 100)}%
@@ -361,7 +361,7 @@ export default function StoryTreeVisualization({
             <button
               onClick={zoomIn}
               disabled={zoom >= 2}
-              className="w-5 h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-cyan-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-xs font-bold"
+              className="w-5 h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-cyan-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-xs font-bold cursor-pointer"
               title="Zoomer"
             >
               +
@@ -657,7 +657,7 @@ export default function StoryTreeVisualization({
         {/* Bouton plein écran en bas */}
         <button
           onClick={() => setIsModalOpen(true)}
-          className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-400/30 rounded-lg text-cyan-400 hover:text-cyan-300 transition-all text-xs"
+          className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-400/30 rounded-lg text-cyan-400 hover:text-cyan-300 transition-all text-xs cursor-pointer"
           title="Vue plein écran"
           type="button"
         >
@@ -749,7 +749,7 @@ export default function StoryTreeVisualization({
                 )}
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="text-white/70 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
+                  className="text-white/70 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg cursor-pointer"
                   type="button"
                 >
                   <svg
