@@ -222,39 +222,67 @@ export default function ReadPage() {
         console.log("Aucune partie trouvée");
       }
 
-      // 4. Créer la section "Continuer à lire" avec progression
-      const storiesInProgress: EnrichedStory[] = [];
+      // 4. Enrichir toutes les histoires avec la progression de l'utilisateur
+      const progressMap = new Map<string, { progress: number; partyId: string; startDate: Date }>();
+      const storiesInProgressMap = new Map<string, EnrichedStory>();
 
       for (const party of userParties) {
-        if (!party.end_date) { // Seulement les parties non terminées
-          const story = enrichedStories.find(s => s._id === party.story_id);
-          if (story) {
-            try {
-              const progressData = await partiesApi.getProgress(party._id);
-              storiesInProgress.push({
-                ...story,
-                progress: progressData.progress,
-                partyId: party._id,
-              });
-            } catch (err) {
-              console.error("Erreur lors du chargement de la progression", err);
+        const storyId = typeof party.story_id === 'object'
+          ? (party.story_id as any)._id
+          : party.story_id;
+
+        try {
+          const progressData = await partiesApi.getProgress(party._id);
+
+          // Stocker la progression pour chaque histoire (garder la plus récente)
+          const existingProgress = progressMap.get(storyId);
+          const partyStartDate = new Date(party.start_date);
+
+          if (!existingProgress || partyStartDate > existingProgress.startDate) {
+            progressMap.set(storyId, {
+              progress: progressData.progress,
+              partyId: party._id,
+              startDate: partyStartDate,
+            });
+
+            // Ajouter à "Continuer à lire" si non terminé ET si progress > 0
+            if (!party.end_date && progressData.progress > 0) {
+              const story = enrichedStories.find(s => s._id === storyId);
+              if (story) {
+                storiesInProgressMap.set(storyId, {
+                  ...story,
+                  progress: progressData.progress,
+                  partyId: party._id,
+                });
+              }
             }
           }
+        } catch (err) {
+          console.error("Erreur lors du chargement de la progression", err);
         }
       }
 
-      setContinueReading(storiesInProgress);
+      // Convertir la Map en Array pour "Continuer à lire"
+      setContinueReading(Array.from(storiesInProgressMap.values()));
 
-      // 5. Trier par rating pour les tendances (top 10)
-      const sortedByRating = [...enrichedStories].sort((a, b) => {
+      // 5. Appliquer la progression à toutes les histoires
+      const storiesWithProgress = enrichedStories.map(story => {
+        const progressInfo = progressMap.get(story._id);
+        return progressInfo && progressInfo.progress > 0
+          ? { ...story, progress: progressInfo.progress, partyId: progressInfo.partyId }
+          : story;
+      });
+
+      // 6. Trier par rating pour les tendances (top 10)
+      const sortedByRating = [...storiesWithProgress].sort((a, b) => {
         const ratingA = a.averageRating || 0;
         const ratingB = b.averageRating || 0;
         return ratingB - ratingA;
       });
       setTrending(sortedByRating.slice(0, 10));
 
-      // 6. Toutes les histoires publiées
-      setPublishedStories(enrichedStories);
+      // 7. Toutes les histoires publiées avec progression
+      setPublishedStories(storiesWithProgress);
 
       setError("");
     } catch (err) {
