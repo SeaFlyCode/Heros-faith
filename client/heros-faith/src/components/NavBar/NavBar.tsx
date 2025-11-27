@@ -62,7 +62,7 @@ export default function NavBar() {
                         <>
                             {isAuthenticated && user ? (
                                 // Menu utilisateur si connecté
-                                <UserMenu username={user.username} onLogout={logout} />
+                                <UserMenu username={user.username} profilePicture={user.profilePicture} onLogout={logout} />
                             ) : (
                                 // Bouton de connexion si non connecté
                                 <Link

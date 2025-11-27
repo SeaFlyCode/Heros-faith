@@ -23,6 +23,21 @@ export default function ProfilePage() {
     }
   }, [isLoading, isAuthenticated, router]);
 
+  // Log pour tracer la photo de profil
+  useEffect(() => {
+    if (user?.profilePicture) {
+      const imageUrl = `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000'}/uploads/${user.profilePicture}`;
+      console.log('📸 [ProfilePage] Chargement de la photo de profil:', {
+        profilePicture: user.profilePicture,
+        imageUrl,
+        username: user.username,
+        timestamp: new Date().toISOString()
+      });
+    } else if (user) {
+      console.log('📸 [ProfilePage] Aucune photo de profil définie pour l\'utilisateur:', user.username);
+    }
+  }, [user?.profilePicture, user?.username]);
+
   useEffect(() => {
     const fetchData = async () => {
       if (user?._id) {
@@ -132,10 +147,10 @@ export default function ProfilePage() {
                 {/* Photo de profil */}
                 <div className="relative group mb-4">
                   <div className="w-32 h-32 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-4 border-white/20 flex items-center justify-center overflow-hidden">
-                    {user.avatar ? (
-                      <img 
-                        src={user.avatar} 
-                        alt="Avatar" 
+                    {user.profilePicture ? (
+                      <img
+                        src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000'}/uploads/${user.profilePicture}`}
+                        alt="Photo de profil"
                         className="w-full h-full object-cover"
                       />
                     ) : (

@@ -35,8 +35,38 @@ app.use(cors({
 
 app.use(express.json());
 
-// Servir les fichiers statiques (uploads)
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Servir les fichiers statiques (uploads) avec en-têtes CORS
+app.use('/uploads', (req, res, next) => {
+  console.log('📸 [Server] Requête d\'image:', {
+    path: req.path,
+    method: req.method,
+    origin: req.headers.origin,
+    timestamp: new Date().toISOString()
+  });
+
+  // En-têtes CORS
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.header('Cross-Origin-Embedder-Policy', 'unsafe-none');
+
+  // Définir le bon type MIME selon l'extension
+  const ext = path.extname(req.path).toLowerCase();
+  const mimeTypes: { [key: string]: string } = {
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp'
+  };
+
+  if (mimeTypes[ext]) {
+    res.setHeader('Content-Type', mimeTypes[ext]);
+  }
+
+  next();
+}, express.static(path.join(__dirname, '../uploads')));
 
 app.get('/', (req, res) => {
     res.send('Serveur Express TypeScript opérationnel !');

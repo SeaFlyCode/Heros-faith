@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middlewares/authMiddleware.ts';
 import { roleMiddleware } from '../middlewares/roleMiddleware.ts';
+import { upload } from '../middlewares/uploadMiddleware.ts';
 import {
   createUser,
   login,
@@ -8,7 +9,9 @@ import {
   getUserById,
   getUserStats,
   updateUser,
-  deleteUser
+  deleteUser,
+  uploadProfilePicture,
+  deleteProfilePicture
 } from '../controllers/userControllers.ts';
 
 const router = Router();
@@ -22,5 +25,9 @@ router.get('/:userId', authMiddleware, getUserById);
 router.patch('/:userId', authMiddleware, updateUser);
 // Route admin pour modifier n'importe quel utilisateur
 router.delete('/:userId', authMiddleware, roleMiddleware('admin'), deleteUser);
+
+// Routes pour la photo de profil
+router.post('/:userId/profile-picture', authMiddleware, upload.single('profilePicture'), uploadProfilePicture);
+router.delete('/:userId/profile-picture', authMiddleware, deleteProfilePicture);
 
 export default router;

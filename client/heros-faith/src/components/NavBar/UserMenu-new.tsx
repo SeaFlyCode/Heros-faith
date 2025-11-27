@@ -13,20 +13,6 @@ export default function UserMenu({ username, profilePicture, onLogout }: UserMen
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Log pour tracer la photo de profil
-  useEffect(() => {
-    if (profilePicture) {
-      const imageUrl = `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000'}/uploads/${profilePicture}`;
-      console.log('📸 [NavBar] Chargement de la photo de profil:', {
-        profilePicture,
-        imageUrl,
-        timestamp: new Date().toISOString()
-      });
-    } else {
-      console.log('📸 [NavBar] Aucune photo de profil définie');
-    }
-  }, [profilePicture]);
-
   // Fermer le menu si on clique en dehors
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

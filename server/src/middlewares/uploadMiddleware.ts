@@ -22,7 +22,8 @@ const storage = multer.diskStorage({
     // Générer un nom unique pour le fichier
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
-    cb(null, `story-${uniqueSuffix}${ext}`);
+    const prefix = file.fieldname === 'profilePicture' ? 'profile' : 'story';
+    cb(null, `${prefix}-${uniqueSuffix}${ext}`);
   }
 });
 

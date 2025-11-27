@@ -4,10 +4,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Prism from "@/components/Prism";
+import ProfilePictureUpload from "@/components/ProfilePictureUpload";
 import { usersApi, type ApiError } from "@/api";
 
 export default function EditProfilePage() {
-  const { user, isLoading, isAuthenticated, checkAuth } = useAuth();
+  const { user, isLoading, isAuthenticated, checkAuth, updateUser, refreshUserFromServer } = useAuth();
   const router = useRouter();
 
   const [username, setUsername] = useState("");
@@ -112,12 +113,8 @@ export default function EditProfilePage() {
       console.log("✅ Profil mis à jour:", updatedUser);
 
       // Mettre à jour le localStorage avec les nouvelles données
-      const currentToken = localStorage.getItem("token");
-      if (currentToken) {
-        localStorage.setItem("user", JSON.stringify(updatedUser));
-        // Rafraîchir les données dans le hook useAuth
-        checkAuth();
-      }
+      console.log('🔄 [EditProfile] Mise à jour du localStorage après modification du profil');
+      updateUser(updatedUser);
 
       setSuccess("Profil mis à jour avec succès !");
 
@@ -210,18 +207,33 @@ export default function EditProfilePage() {
               )}
 
               {/* Photo de profil */}
-              <div className="flex flex-col items-center gap-4 pb-6 border-b border-white/10">
-                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-4 border-white/20 flex items-center justify-center overflow-hidden">
-                  <div className="text-white text-4xl font-bold">
-                    {username.charAt(0).toUpperCase()}
+              <div className="pb-6 border-b border-white/10">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
                   </div>
+                  <h3 className="text-lg font-semibold text-white">Photo de profil</h3>
                 </div>
-                <button
-                  type="button"
-                  className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm rounded-xl transition-colors border border-white/20"
-                >
-                  Changer la photo
-                </button>
+                <ProfilePictureUpload
+                  currentImage={user.profilePicture}
+                  onUpload={async (file) => {
+                    if (!user) return;
+                    console.log('📤 [EditProfile] Appel API uploadProfilePicture');
+                    const result = await usersApi.uploadProfilePicture(user._id, file);
+                    console.log('✅ [EditProfile] Résultat de l\'upload:', result);
+                    console.log('🔄 [EditProfile] Rafraîchissement depuis le serveur');
+                    await refreshUserFromServer();
+                  }}
+                  onDelete={async () => {
+                    if (!user) return;
+                    console.log('🗑️ [EditProfile] Appel API deleteProfilePicture');
+                    await usersApi.deleteProfilePicture(user._id);
+                    console.log('🔄 [EditProfile] Rafraîchissement depuis le serveur');
+                    await refreshUserFromServer();
+                  }}
+                />
               </div>
 
               {/* Nom d'utilisateur */}

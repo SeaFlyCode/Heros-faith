@@ -7,6 +7,12 @@ import { Page } from '../models/page.ts';
 import { Party } from '../models/party.ts';
 import { Rating } from '../models/rating.ts';
 import type { AuthenticatedRequest } from '../middlewares/authMiddleware.ts';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export async function createUser(req: Request, res: Response, next: NextFunction) {
   try {
@@ -275,6 +281,115 @@ export async function getUserStats(req: AuthenticatedRequest, res: Response, nex
     res.json(stats);
   } catch (err) {
     console.error('❌ Erreur lors de la récupération des statistiques:', err);
+    next(err);
+  }
+}
+
+// À la fin du fichier, après getUserStats
+export async function uploadProfilePicture(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const { userId } = req.params;
+
+    // Vérifier que l'utilisateur modifie bien son propre profil
+    const authenticatedUser = req.user as any;
+    if (authenticatedUser.userId !== userId && authenticatedUser.role !== 'admin') {
+      return res.status(403).json({ message: 'Vous ne pouvez modifier que votre propre profil' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'Aucun fichier fourni' });
+    }
+
+    // Trouver l'utilisateur
+    const user = await User.findById(userId);
+    if (!user) {
+      // Supprimer le fichier uploadé si l'utilisateur n'existe pas
+      fs.unlinkSync(req.file.path);
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+
+    // Supprimer l'ancienne photo de profil si elle existe
+    if (user.profilePicture) {
+      const oldImagePath = path.join(__dirname, '../../uploads', user.profilePicture);
+      if (fs.existsSync(oldImagePath)) {
+        fs.unlinkSync(oldImagePath);
+        console.log('🗑️ Ancienne photo de profil supprimée:', user.profilePicture);
+      }
+    }
+
+    // Sauvegarder le nom du fichier dans la BD
+    user.profilePicture = req.file.filename;
+    await user.save();
+
+    console.log('✅ [Server] Photo de profil uploadée:', req.file.filename);
+    console.log('📸 [Server] Données utilisateur après upload:', {
+      userId: user._id,
+      username: user.username,
+      profilePicture: user.profilePicture,
+      profilePictureUrl: `/uploads/${user.profilePicture}`
+    });
+
+    // Retourner l'URL de la photo de profil
+    res.json({
+      message: 'Photo de profil uploadée avec succès',
+      profilePicture: user.profilePicture,
+      profilePictureUrl: `/uploads/${user.profilePicture}`
+    });
+  } catch (err) {
+    // En cas d'erreur, supprimer le fichier uploadé
+    if (req.file) {
+      fs.unlinkSync(req.file.path);
+    }
+    console.error('❌ Erreur lors de l\'upload de la photo de profil:', err);
+    next(err);
+  }
+}
+
+export async function deleteProfilePicture(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const { userId } = req.params;
+
+    console.log('🗑️ [Server] Début de la suppression de photo de profil:', { userId });
+
+    // Vérifier que l'utilisateur modifie bien son propre profil
+    const authenticatedUser = req.user as any;
+    if (authenticatedUser.userId !== userId && authenticatedUser.role !== 'admin') {
+      console.log('❌ [Server] Tentative de suppression non autorisée');
+      return res.status(403).json({ message: 'Vous ne pouvez modifier que votre propre profil' });
+    }
+
+    // Trouver l'utilisateur
+    const user = await User.findById(userId);
+    if (!user) {
+      console.log('❌ [Server] Utilisateur non trouvé');
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+
+    if (!user.profilePicture) {
+      console.log('❌ [Server] Aucune photo de profil à supprimer');
+      return res.status(404).json({ message: 'Aucune photo de profil à supprimer' });
+    }
+
+    console.log('📸 [Server] Photo de profil à supprimer:', user.profilePicture);
+
+    // Supprimer le fichier du système de fichiers
+    const imagePath = path.join(__dirname, '../../uploads', user.profilePicture);
+    if (fs.existsSync(imagePath)) {
+      fs.unlinkSync(imagePath);
+      console.log('✅ [Server] Fichier supprimé du système:', user.profilePicture);
+    } else {
+      console.log('⚠️ [Server] Fichier non trouvé sur le système:', imagePath);
+    }
+
+    // Supprimer la référence dans la BD
+    user.profilePicture = '';
+    await user.save();
+
+    console.log('✅ [Server] Photo de profil supprimée de la BD pour:', user.username);
+
+    res.json({ message: 'Photo de profil supprimée avec succès' });
+  } catch (err) {
+    console.error('❌ Erreur lors de la suppression de la photo de profil:', err);
     next(err);
   }
 }

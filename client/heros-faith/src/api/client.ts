@@ -11,10 +11,12 @@ export interface ApiError {
 }
 
 export class ApiClient {
+  public baseURL: string;
   private baseUrl: string;
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
+    this.baseURL = baseUrl;
   }
 
   /**

@@ -6,6 +6,7 @@ export interface User {
   email: string;
   role: 'user' | 'creator' | 'admin';
   avatar?: string;
+  profilePicture?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -99,5 +100,62 @@ export const usersApi = {
    */
   delete: (userId: string): Promise<void> => {
     return apiClient.delete<void>(`/users/${userId}`);
+  },
+
+  /**
+   * Upload une photo de profil
+   */
+  uploadProfilePicture: async (userId: string, file: File): Promise<{ message: string; profilePicture: string; profilePictureUrl: string }> => {
+    console.log('📤 [API] Début de l\'upload de la photo de profil:', {
+      userId,
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+      timestamp: new Date().toISOString()
+    });
+
+    const formData = new FormData();
+    formData.append('profilePicture', file);
+
+    const uploadUrl = `${apiClient.baseURL}/users/${userId}/profile-picture`;
+    console.log('📤 [API] URL d\'upload:', uploadUrl);
+
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('❌ [API] Erreur lors de l\'upload:', {
+        status: response.status,
+        statusText: response.statusText,
+        error
+      });
+      throw new Error(error.message || 'Erreur lors de l\'upload');
+    }
+
+    const result = await response.json();
+    console.log('✅ [API] Upload réussi:', {
+      profilePicture: result.profilePicture,
+      profilePictureUrl: result.profilePictureUrl,
+      timestamp: new Date().toISOString()
+    });
+
+    return result;
+  },
+
+  /**
+   * Supprimer la photo de profil
+   */
+  deleteProfilePicture: (userId: string): Promise<{ message: string }> => {
+    console.log('🗑️ [API] Suppression de la photo de profil:', {
+      userId,
+      timestamp: new Date().toISOString()
+    });
+    return apiClient.delete<{ message: string }>(`/users/${userId}/profile-picture`);
   },
 };
