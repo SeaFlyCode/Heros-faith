@@ -15,6 +15,17 @@ export interface Story {
   status: 'draft' | 'published';
   createdAt?: string;
   updatedAt?: string;
+  censorship?: {
+    censored: boolean;
+    admin?: string;
+    censorshipDate?: string;
+    reason?: string;
+  };
+  report?: {
+    reported: boolean;
+    reporter?: string;
+    reportDate?: string;
+  };
 }
 
 // Helper pour récupérer le nom d'affichage de l'auteur
@@ -118,6 +129,29 @@ export const storiesApi = {
    */
   deleteCoverImage: (storyId: string): Promise<{ message: string; story: Story }> => {
     return apiClient.delete(`/stories/${storyId}/cover`);
+  },
+
+  // ===== Admin API =====
+
+  /**
+   * Récupérer toutes les histoires (admin)
+   */
+  getAllAdmin: (): Promise<Story[]> => {
+    return apiClient.get<Story[]>('/stories/admin/all');
+  },
+
+  /**
+   * Censurer une histoire (admin)
+   */
+  censor: (storyId: string, reason?: string): Promise<{ message: string; story: Story }> => {
+    return apiClient.post(`/stories/${storyId}/censor`, { reason });
+  },
+
+  /**
+   * Lever la censure d'une histoire (admin)
+   */
+  uncensor: (storyId: string): Promise<{ message: string; story: Story }> => {
+    return apiClient.post(`/stories/${storyId}/uncensor`, {});
   },
 };
 
