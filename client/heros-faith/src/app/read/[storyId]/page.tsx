@@ -363,6 +363,7 @@ export default function ReadStoryPage() {
           if (existingParty) {
             setPartyId(existingParty._id);
             currentParty = existingParty;
+            console.log("📚 Partie en cours récupérée:", existingParty._id);
 
             // Si l'utilisateur est l'auteur ET qu'il a une progression
             // On réinitialise automatiquement car c'est probablement de l'écriture
@@ -397,6 +398,7 @@ export default function ReadStoryPage() {
             });
             setPartyId(newParty._id);
             currentParty = newParty;
+            console.log("🆕 Nouvelle partie créée:", newParty._id);
           }
         } catch (err) {
           console.error("Erreur lors de la gestion de la partie:", err);
@@ -532,6 +534,7 @@ export default function ReadStoryPage() {
       setPageHistory(prev => {
         // Si c'est déjà la dernière page de l'historique, ne pas l'ajouter à nouveau
         if (prev.length > 0 && prev[prev.length - 1] === pageId) {
+          console.log("⏭️ Page déjà dans l'historique, pas de sauvegarde");
           return prev;
         }
 
@@ -539,11 +542,23 @@ export default function ReadStoryPage() {
 
         // Mettre à jour la progression dans la partie
         if (partyIdRef.current) {
+          console.log("💾 Sauvegarde de la progression:", {
+            partyId: partyIdRef.current,
+            pageNumber: newHistory.length,
+            totalPages: newHistory.length
+          });
+
           partiesApi.update(partyIdRef.current, {
             path: newHistory,
-          }).catch(err => {
-            console.error("Erreur lors de la mise à jour de la progression:", err);
+          })
+          .then(() => {
+            console.log("✅ Progression sauvegardée avec succès");
+          })
+          .catch(err => {
+            console.error("❌ Erreur lors de la mise à jour de la progression:", err);
           });
+        } else {
+          console.warn("⚠️ Aucune partie active (partyId manquant) - progression non sauvegardée");
         }
 
         return newHistory;
@@ -575,11 +590,13 @@ export default function ReadStoryPage() {
   // Gérer l'arrivée à une fin
   const handleEndingReached = async () => {
     try {
-      // Marquer la partie comme terminée
-      if (partyIdRef.current) {
+      // Marquer la partie comme terminée avec l'ID de la fin atteinte
+      if (partyIdRef.current && currentPage) {
         await partiesApi.update(partyIdRef.current, {
           end_date: new Date().toISOString(),
+          ending_id: currentPage._id, // Enregistrer quelle fin a été atteinte
         });
+        console.log("✅ Partie terminée - Fin atteinte:", currentPage.ending_label || currentPage._id);
       }
       
       setHasCompletedEnding(true);

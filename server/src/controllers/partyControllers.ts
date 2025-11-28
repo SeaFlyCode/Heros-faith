@@ -96,8 +96,18 @@ export async function updateParty(req: Request, res: Response, next: NextFunctio
   try {
     const { partyId } = req.params;
     const updates = req.body;
+
+    console.log("📝 [PARTY] Mise à jour de la partie:", partyId);
+    console.log("📝 [PARTY] Données:", {
+      pathLength: updates.path?.length,
+      hasEndDate: !!updates.end_date,
+      hasEndingId: !!updates.ending_id
+    });
+
     const party = await Party.findByIdAndUpdate(partyId, updates, { new: true });
     if (!party) return res.status(404).json({ message: 'Party not found' });
+
+    console.log("✅ [PARTY] Partie mise à jour avec succès");
     res.json(party);
   } catch (err) {
     next(err);
