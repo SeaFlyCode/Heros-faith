@@ -1,26 +1,33 @@
 import { apiClient } from './client';
 
 export interface Report {
-  id: number;
-  userId: number;
-  storyId: number;
+  _id: string;
+  user_id: string | {
+    _id: string;
+    username: string;
+    email: string;
+  };
+  story_id: string | {
+    _id: string;
+    title: string;
+    author: string | { _id: string; username: string; };
+    coverImage?: string;
+  };
   reason: string;
-  description?: string;
-  status?: 'pending' | 'reviewed' | 'resolved' | 'rejected';
+  status?: 'pending' | 'reviewed' | 'dismissed';
   createdAt?: string;
   updatedAt?: string;
 }
 
 export interface CreateReportRequest {
-  storyId: number;
+  story_id: string;
+  user_id: string;
   reason: string;
-  description?: string;
 }
 
 export interface UpdateReportRequest {
   reason?: string;
-  description?: string;
-  status?: 'pending' | 'reviewed' | 'resolved' | 'rejected';
+  status?: 'pending' | 'reviewed' | 'dismissed';
 }
 
 /**
@@ -44,21 +51,21 @@ export const reportsApi = {
   /**
    * Récupérer un signalement par son ID (admin uniquement)
    */
-  getById: (reportId: number): Promise<Report> => {
+  getById: (reportId: string): Promise<Report> => {
     return apiClient.get<Report>(`/reports/${reportId}`);
   },
 
   /**
    * Mettre à jour un signalement (admin uniquement)
    */
-  update: (reportId: number, reportData: UpdateReportRequest): Promise<Report> => {
+  update: (reportId: string, reportData: UpdateReportRequest): Promise<Report> => {
     return apiClient.patch<Report>(`/reports/${reportId}`, reportData);
   },
 
   /**
    * Supprimer un signalement (admin uniquement)
    */
-  delete: (reportId: number): Promise<void> => {
+  delete: (reportId: string): Promise<void> => {
     return apiClient.delete<void>(`/reports/${reportId}`);
   },
 };

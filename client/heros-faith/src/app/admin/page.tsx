@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { storiesApi, getAuthorDisplayName, type Story } from "@/api";
+import { storiesApi, reportsApi, getAuthorDisplayName, type Story, type Report } from "@/api";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function AdminPage() {
@@ -10,10 +10,12 @@ export default function AdminPage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [stories, setStories] = useState<Story[]>([]);
+  const [reports, setReports] = useState<Report[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<"all" | "published" | "censored">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<"stories" | "reports">("stories");
   
   // Modal de censure
   const [showCensorModal, setShowCensorModal] = useState(false);
@@ -36,17 +38,21 @@ export default function AdminPage() {
         router.push("/");
         return;
       }
-      loadStories();
+      loadData();
     }
   }, [authLoading, isAuthenticated, user]);
 
-  const loadStories = async () => {
+  const loadData = async () => {
     try {
       setIsLoading(true);
-      const data = await storiesApi.getAllAdmin();
-      setStories(data);
+      const [storiesData, reportsData] = await Promise.all([
+        storiesApi.getAllAdmin(),
+        reportsApi.getAll(),
+      ]);
+      setStories(storiesData);
+      setReports(reportsData);
     } catch (err: any) {
-      setError(err.message || "Erreur lors du chargement des histoires");
+      setError(err.message || "Erreur lors du chargement des données");
     } finally {
       setIsLoading(false);
     }
@@ -145,6 +151,47 @@ export default function AdminPage() {
     }
   };
 
+  // Supprimer un signalement
+  const handleDeleteReport = async (reportId: string) => {
+    try {
+      await reportsApi.delete(reportId);
+      setReports(reports.filter(r => r._id !== reportId));
+    } catch (err: any) {
+      setError(err.message || "Erreur lors de la suppression du signalement");
+    }
+  };
+
+  // Censurer depuis un signalement
+  const handleCensorFromReport = async (report: Report) => {
+    const storyId = typeof report.story_id === 'object' ? report.story_id._id : report.story_id;
+    const story = stories.find(s => s._id === storyId);
+    if (story) {
+      openCensorModal(story);
+    }
+  };
+
+  // Helper pour obtenir les infos du signalement
+  const getReportStoryTitle = (report: Report): string => {
+    if (typeof report.story_id === 'object' && report.story_id !== null) {
+      return report.story_id.title;
+    }
+    return "Histoire inconnue";
+  };
+
+  const getReportUserName = (report: Report): string => {
+    if (typeof report.user_id === 'object' && report.user_id !== null) {
+      return report.user_id.username;
+    }
+    return "Utilisateur inconnu";
+  };
+
+  const getReportStoryId = (report: Report): string => {
+    if (typeof report.story_id === 'object' && report.story_id !== null) {
+      return report.story_id._id;
+    }
+    return report.story_id as string;
+  };
+
   if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -175,7 +222,41 @@ export default function AdminPage() {
             </svg>
             Administration
           </h1>
-          <p className="text-white/50 mt-1">Gestion des histoires</p>
+          <p className="text-white/50 mt-1">Gestion des histoires et signalements</p>
+        </div>
+
+        {/* Onglets */}
+        <div className="flex gap-2 mb-8">
+          <button
+            onClick={() => setActiveTab("stories")}
+            className={`px-6 py-3 rounded-xl font-medium transition-all flex items-center gap-2 ${
+              activeTab === "stories"
+                ? "bg-white/20 border-white/30 text-white"
+                : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"
+            } border`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+            Histoires
+            <span className="ml-1 px-2 py-0.5 bg-white/10 rounded-full text-xs">{stories.length}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("reports")}
+            className={`px-6 py-3 rounded-xl font-medium transition-all flex items-center gap-2 ${
+              activeTab === "reports"
+                ? "bg-orange-500/30 border-orange-500/50 text-orange-300"
+                : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"
+            } border`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            Signalements
+            {reports.length > 0 && (
+              <span className="ml-1 px-2 py-0.5 bg-orange-500/30 rounded-full text-xs text-orange-300">{reports.length}</span>
+            )}
+          </button>
         </div>
 
         {/* Erreur */}
@@ -186,7 +267,10 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Stats rapides */}
+        {/* Contenu selon l'onglet actif */}
+        {activeTab === "stories" ? (
+          <>
+            {/* Stats rapides */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
             <div className="flex items-center gap-4">
@@ -408,6 +492,116 @@ export default function AdminPage() {
             ))
           )}
         </div>
+          </>
+        ) : (
+          /* Section des signalements */
+          <div className="space-y-4">
+            {reports.length === 0 ? (
+              <div className="text-center py-12">
+                <svg className="w-16 h-16 text-white/20 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-white/40">Aucun signalement en attente</p>
+                <p className="text-white/30 text-sm mt-1">Les histoires signalées apparaîtront ici</p>
+              </div>
+            ) : (
+              reports.map((report) => {
+                const storyId = getReportStoryId(report);
+                const story = stories.find(s => s._id === storyId);
+                const isCensored = story?.censorship?.censored;
+                
+                return (
+                  <div
+                    key={report._id}
+                    className="bg-white/5 border border-orange-500/30 rounded-2xl p-6 transition-all hover:bg-white/10"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                      {/* Infos du signalement */}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          <h3 className="text-lg font-semibold text-white">
+                            {getReportStoryTitle(report)}
+                          </h3>
+                          {isCensored && (
+                            <span className="px-2 py-0.5 bg-red-500/20 border border-red-500/30 rounded-full text-red-400 text-xs">
+                              Déjà censurée
+                            </span>
+                          )}
+                        </div>
+                        
+                        <p className="text-white/50 text-sm mb-2">
+                          Signalé par <span className="text-white/70">{getReportUserName(report)}</span>
+                          {report.createdAt && (
+                            <span className="ml-2">
+                              • {new Date(report.createdAt).toLocaleDateString("fr-FR", {
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          )}
+                        </p>
+
+                        {/* Raison du signalement */}
+                        <div className="mt-3 p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl">
+                          <p className="text-sm text-white/60">
+                            <span className="text-orange-400 font-medium">Raison :</span>{" "}
+                            <span className="text-white/80">{report.reason}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex flex-wrap items-center gap-2 sm:flex-shrink-0">
+                        {/* Voir l'histoire */}
+                        <button
+                          onClick={() => router.push(`/read/${storyId}`)}
+                          className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 rounded-xl text-sm font-medium transition-all flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          Voir
+                        </button>
+
+                        {/* Censurer l'histoire (si pas déjà censurée) */}
+                        {!isCensored && (
+                          <button
+                            onClick={() => handleCensorFromReport(report)}
+                            className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 rounded-xl text-sm font-medium transition-all flex items-center gap-2"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                            </svg>
+                            Censurer
+                          </button>
+                        )}
+
+                        {/* Ignorer le signalement */}
+                        <button
+                          onClick={() => handleDeleteReport(report._id)}
+                          className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-400 rounded-xl text-sm font-medium transition-all flex items-center gap-2"
+                          title="Marquer comme traité"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Ignorer
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
       </main>
 
       {/* Modal de censure */}

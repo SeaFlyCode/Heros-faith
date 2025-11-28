@@ -9,6 +9,7 @@ import {
   storyChoicesApi,
   partiesApi,
   ratingsApi,
+  reportsApi,
   getAuthorDisplayName,
   type Story, 
   type StoryPage,
@@ -16,6 +17,119 @@ import {
   type ApiError
 } from "@/api";
 import { useAuth } from "@/hooks/useAuth";
+
+// Modal de signalement
+const ReportModal = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  storyTitle,
+  isSubmitting,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (reason: string) => void;
+  storyTitle: string;
+  isSubmitting: boolean;
+}) => {
+  const [reason, setReason] = useState("");
+  const [selectedReason, setSelectedReason] = useState("");
+
+  const predefinedReasons = [
+    "Contenu inapproprié ou offensant",
+    "Contenu violent ou choquant",
+    "Contenu à caractère sexuel",
+    "Discours haineux ou discrimination",
+    "Plagiat ou vol de contenu",
+    "Autre",
+  ];
+
+  if (!isOpen) return null;
+
+  const handleSubmit = () => {
+    const finalReason = selectedReason === "Autre" ? reason : selectedReason;
+    if (finalReason.trim()) {
+      onSubmit(finalReason);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      
+      {/* Modal */}
+      <div className="relative bg-gradient-to-br from-gray-900 to-black border border-orange-500/30 rounded-3xl p-8 max-w-md w-full shadow-2xl">
+        {/* Icône */}
+        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center">
+          <svg className="w-8 h-8 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+
+        {/* Titre */}
+        <h2 className="text-2xl font-bold text-white text-center mb-2">
+          Signaler cette histoire
+        </h2>
+        <p className="text-white/60 text-center mb-6">
+          <span className="text-white font-medium">"{storyTitle}"</span>
+        </p>
+
+        {/* Raisons prédéfinies */}
+        <div className="space-y-2 mb-4">
+          {predefinedReasons.map((r) => (
+            <button
+              key={r}
+              onClick={() => setSelectedReason(r)}
+              className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
+                selectedReason === r
+                  ? "bg-orange-500/30 border border-orange-400/50 text-white"
+                  : "bg-white/5 border border-white/10 text-white/70 hover:bg-white/10"
+              }`}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+
+        {/* Champ texte pour "Autre" */}
+        {selectedReason === "Autre" && (
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Décrivez la raison du signalement..."
+            className="w-full px-4 py-3 mb-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-orange-500/50 resize-none"
+            rows={3}
+          />
+        )}
+
+        {/* Boutons */}
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 font-medium rounded-xl transition-all"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={!selectedReason || (selectedReason === "Autre" && !reason.trim()) || isSubmitting}
+            className={`flex-1 px-4 py-3 font-medium rounded-xl transition-all ${
+              selectedReason && (selectedReason !== "Autre" || reason.trim())
+                ? 'bg-orange-500/30 hover:bg-orange-500/40 border border-orange-400/50 text-white' 
+                : 'bg-gray-700/30 border border-gray-600/30 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {isSubmitting ? 'Envoi...' : 'Signaler'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // Modal de notation
 const RatingModal = ({ 
@@ -298,6 +412,9 @@ export default function ReadStoryPage() {
   const [resumeData, setResumeData] = useState<{ party: any; pagesData: StoryPage[] } | null>(null);
   const [showCompletedModal, setShowCompletedModal] = useState(false);
   const [completedPartyData, setCompletedPartyData] = useState<{ party: any; pagesData: StoryPage[] } | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
 
   // Mettre à jour la ref quand partyId change
   useEffect(() => {
@@ -630,6 +747,36 @@ export default function ReadStoryPage() {
     }
   };
 
+  // Soumettre le signalement
+  const handleReportSubmit = async (reason: string) => {
+    try {
+      setIsSubmittingReport(true);
+      if (user && storyId) {
+        console.log("🚨 Envoi du signalement:", { user_id: user._id, story_id: storyId, reason });
+        await reportsApi.create({
+          user_id: user._id,
+          story_id: storyId,
+          reason: reason,
+        });
+        console.log("✅ Signalement envoyé avec succès");
+        setReportSuccess(true);
+        setShowReportModal(false);
+        // Afficher un message de succès temporaire
+        setTimeout(() => setReportSuccess(false), 3000);
+      } else {
+        console.error("❌ Utilisateur ou storyId manquant:", { user, storyId });
+        alert("Erreur: Vous devez être connecté pour signaler une histoire.");
+      }
+    } catch (err: any) {
+      console.error("❌ Erreur lors du signalement:", err);
+      const errorMessage = err?.message || "Une erreur est survenue lors du signalement.";
+      alert(errorMessage);
+      setShowReportModal(false);
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  };
+
   // Gérer le choix d'une option
   const handleChoice = (choice: StoryChoice) => {
     if (choice.target_page_id) {
@@ -815,7 +962,42 @@ export default function ReadStoryPage() {
     );
   }
 
+  // Ne pas afficher "Histoire vide" si un modal est ouvert (resume, completed, report)
   if (!story || !currentPage) {
+    // Si un modal est affiché, on attend la décision de l'utilisateur
+    if (showResumeModal || showCompletedModal || showReportModal) {
+      return (
+        <div className="min-h-screen w-full flex items-center justify-center bg-black">
+          <div className="text-center">
+            <svg className="animate-spin h-12 w-12 text-cyan-400 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p className="text-white/60 text-lg">Préparation de l'histoire...</p>
+          </div>
+          
+          {/* Modal de reprise */}
+          <ResumeModal
+            isOpen={showResumeModal}
+            onResume={handleResumeReading}
+            onRestart={handleStartFresh}
+            progressLength={resumeData?.party?.path?.length || 0}
+          />
+
+          {/* Modal pour histoire déjà terminée */}
+          <CompletedStoryModal
+            isOpen={showCompletedModal}
+            onRestart={handleRestartCompletedStory}
+            onGoBack={handleGoBackToStories}
+            storyTitle={story?.title || "cette histoire"}
+            endingLabel={completedPartyData?.party?.ending_id ? 
+              pages.find(p => p._id === completedPartyData.party.ending_id)?.ending_label : undefined
+            }
+          />
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-black">
         <div className="text-center max-w-md px-4">
@@ -852,8 +1034,8 @@ export default function ReadStoryPage() {
         />
       </div>
 
-      {/* Header fixe */}
-      <header className="fixed top-0 left-0 right-0 z-20 bg-black/50 backdrop-blur-xl border-b border-white/10">
+      {/* Header fixe - sous la NavBar principale */}
+      <header className="fixed top-20 left-0 right-0 z-40 bg-black/50 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           {/* Bouton retour */}
           <button
@@ -874,6 +1056,18 @@ export default function ReadStoryPage() {
 
           {/* Boutons actions */}
           <div className="flex items-center gap-3">
+            {/* Bouton signaler */}
+            <button
+              onClick={() => setShowReportModal(true)}
+              className="flex items-center gap-1 text-white/70 hover:text-orange-400 transition-colors"
+              title="Signaler cette histoire"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span className="hidden sm:inline text-sm">Signaler</span>
+            </button>
+
             {/* Bouton recommencer */}
             {pageHistory.length > 1 && (
               <button
@@ -896,8 +1090,8 @@ export default function ReadStoryPage() {
         </div>
       </header>
 
-      {/* Contenu principal */}
-      <main className="relative z-10 min-h-screen pt-24 pb-8 px-4">
+      {/* Contenu principal - pt-44 pour laisser place à NavBar + header lecture */}
+      <main className="relative z-10 min-h-screen pt-44 pb-8 px-4">
         <div className="max-w-3xl mx-auto">
           {/* Carte du contenu */}
           <div 
@@ -1056,6 +1250,27 @@ export default function ReadStoryPage() {
           pages.find(p => p._id === completedPartyData.party.ending_id)?.ending_label : undefined
         }
       />
+
+      {/* Modal de signalement */}
+      <ReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        onSubmit={handleReportSubmit}
+        storyTitle={story?.title || "cette histoire"}
+        isSubmitting={isSubmittingReport}
+      />
+
+      {/* Toast de succès du signalement */}
+      {reportSuccess && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
+          <div className="bg-green-500/20 border border-green-400/50 backdrop-blur-xl rounded-xl px-6 py-4 flex items-center gap-3">
+            <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-green-300 font-medium">Signalement envoyé avec succès</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
