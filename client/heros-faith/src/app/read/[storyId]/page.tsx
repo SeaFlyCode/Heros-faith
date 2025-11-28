@@ -841,6 +841,46 @@ export default function ReadStoryPage() {
     );
   }
 
+  // Affichage quand les modaux de reprise/terminée sont ouverts
+  if (showResumeModal || showCompletedModal) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-black">
+        <div className="fixed inset-0 z-0">
+          <PrismTransition
+            animationType="rotate"
+            timeScale={0.3}
+            height={2}
+            baseWidth={3}
+            targetScale={2}
+            hueShift={0}
+            colorFrequency={1}
+            noise={0.05}
+            glow={0.6}
+          />
+        </div>
+
+        {/* Modal de reprise */}
+        <ResumeModal
+          isOpen={showResumeModal}
+          onResume={handleResumeReading}
+          onRestart={handleStartFresh}
+          progressLength={resumeData?.party?.path?.length || 0}
+        />
+
+        {/* Modal pour histoire déjà terminée */}
+        <CompletedStoryModal
+          isOpen={showCompletedModal}
+          onRestart={handleRestartCompletedStory}
+          onGoBack={handleGoBackToStories}
+          storyTitle={story?.title || "cette histoire"}
+          endingLabel={completedPartyData?.party?.ending_id ? 
+            pages.find(p => p._id === completedPartyData.party.ending_id)?.ending_label : undefined
+          }
+        />
+      </div>
+    );
+  }
+
   if (!story || !currentPage) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-black">
