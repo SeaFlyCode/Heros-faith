@@ -410,7 +410,7 @@ Accès : `http://localhost:3000/api-docs`
 | Membre | Rôle |
 |--------|------|
 | **Sami** | Développeur Fullstack |
-| **[Coéquipier]** | Développeur Fullstack |
+| **Mathéo** | Développeur Fullstack |
 
 ---
 
@@ -429,7 +429,7 @@ Ce projet est sous licence ISC.
 
 <div align="center">
 
-**Made with ❤️ for SDV-3**
+**Made with ❤️ for SDV**
 
 *Projet réalisé dans le cadre de la formation - Novembre 2025*
 
