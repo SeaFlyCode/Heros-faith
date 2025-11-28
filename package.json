@@ -1,14 +1,42 @@
 {
-  "name": "${PROJECT_NAME}",
+  "name": "heros-faith",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/index.js",
   "scripts": {
-    "build": "tsc"
+    "install:all": "npm install && cd client/heros-faith && npm install && cd ../../server && npm install",
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "dev:client": "cd client/heros-faith && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "build:all": "npm run build:server && npm run build:client",
+    "build:client": "cd client/heros-faith && npm run build",
+    "build:server": "cd server && npm run build",
+    "start": "concurrently \"npm run start:client\" \"npm run start:server\"",
+    "start:client": "cd client/heros-faith && npm start",
+    "start:server": "cd server && npm start",
+    "docker:build": "docker build -t heros-faith .",
+    "docker:run": "docker run -d -p 3000:3000 -p 3001:3001 --name heros-faith-app --env-file .env heros-faith",
+    "docker:stop": "docker stop heros-faith-app && docker rm heros-faith-app",
+    "docker:logs": "docker logs -f heros-faith-app",
+    "docker:start": "npm run docker:build && npm run docker:run",
+    "docker:restart": "npm run docker:stop ; npm run docker:start"
   },
-  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SeaFlyCode/Heros-faith.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SeaFlyCode/Heros-faith/issues"
+  },
+  "homepage": "https://github.com/SeaFlyCode/Heros-faith#readme",
   "devDependencies": {
-    "typescript": "^5.5.3"
+    "@types/swagger-jsdoc": "^6.0.4"
   },
-  "private": true
+  "dependencies": {
+    "autoprefixer": "^10.4.22",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.17",
+    "concurrently": "^9.2.1"
+  }
 }

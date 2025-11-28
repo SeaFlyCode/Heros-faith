@@ -1,11 +1,34 @@
-/tmp
-/out-tsc
-
-/node_modules
+# Node.js
+node_modules/
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-/.pnp
-.pnp.js
+# Build output
+/dist/
+/out/
+/out-tsc/
+# IDE files
+.vscode/
+.idea/
+# TypeScript
+*.tsbuildinfo
 
-.vscode/*
+package-lock.json
+
+# Misc
+.DS_Store
+/pnp*
+# Temporary files
+/tmp/
+# Coverage
+coverage/
+# Others
+*.log
+
+# Client & Server folders
+client/node_modules/
+server/node_modules/
+client/dist/
+server/dist/
+server/uploads/
