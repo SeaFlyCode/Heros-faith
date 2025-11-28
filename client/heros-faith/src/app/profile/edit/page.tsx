@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import Prism from "@/components/Prism";
 import ProfilePictureUpload from "@/components/ProfilePictureUpload";
 import { usersApi, type ApiError } from "@/api";
-import { logger } from "@/utils/logger";
 
 export default function EditProfilePage() {
   const { user, isLoading, isAuthenticated, checkAuth, updateUser, refreshUserFromServer } = useAuth();

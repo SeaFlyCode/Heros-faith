@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PrismTransition from "@/components/PrismTransition";
 import StoryTreeVisualization from "@/components/StoryTreeVisualization";
-import { logger } from "@/utils/logger";
 import {
   storyPagesApi,
   storyChoicesApi,
@@ -61,13 +60,13 @@ function WriteStoryPageContent() {
       if (!uniquePagesMap.has(page._id)) {
         uniquePagesMap.set(page._id, page);
       } else {
-        logger.warn(`⚠️ Page dupliquée détectée et ignorée: ${page._id.substring(0, 8)}`);
+        console.warn(`⚠️ Page dupliquée détectée et ignorée: ${page._id.substring(0, 8)}`);
       }
     });
     const uniquePages = Array.from(uniquePagesMap.values());
 
     if (uniquePages.length !== pages.length) {
-      logger.warn(`⚠️ ${pages.length - uniquePages.length} page(s) dupliquée(s) supprimée(s)`);
+      console.warn(`⚠️ ${pages.length - uniquePages.length} page(s) dupliquée(s) supprimée(s)`);
     }
 
     // 2. DÉTECTER LES CYCLES et construire le graphe
@@ -83,7 +82,7 @@ function WriteStoryPageContent() {
             // Vérifier si la cible pointe vers cette page (cycle direct)
             const hasCycleBack = targetPage.choices.some(c => c.target_page_id === page._id);
             if (hasCycleBack) {
-              logger.warn(`🔄 Cycle détecté: ${page._id.substring(0, 8)} ↔ ${choice.target_page_id.substring(0, 8)}`);
+              console.warn(`🔄 Cycle détecté: ${page._id.substring(0, 8)} ↔ ${choice.target_page_id.substring(0, 8)}`);
               cycles.push(`${page._id} -> ${choice.target_page_id}`);
             }
           }
@@ -98,13 +97,13 @@ function WriteStoryPageContent() {
 
     // Si aucune page racine trouvée (tous les nœuds sont dans un cycle)
     if (rootPages.length === 0) {
-      logger.warn(`⚠️ CYCLES DÉTECTÉS - Aucune vraie racine trouvée!`);
-      logger.warn(`🔍 ${cycles.length} cycle(s) détecté(s):`, cycles);
+      console.warn(`⚠️ CYCLES DÉTECTÉS - Aucune vraie racine trouvée!`);
+      console.warn(`🔍 ${cycles.length} cycle(s) détecté(s):`, cycles);
 
       // Stratégie : prendre la première page comme racine artificielle
       // et ignorer les liens qui pointent vers elle depuis des pages "descendantes"
       rootPages = [uniquePages[0]];
-      logger.warn(`⚡ Utilisation de la première page comme racine: ${rootPages[0]._id.substring(0, 8)}`);
+      console.warn(`⚡ Utilisation de la première page comme racine: ${rootPages[0]._id.substring(0, 8)}`);
     }
 
     // 4. SÉLECTIONNER LA MEILLEURE PAGE RACINE
@@ -112,16 +111,16 @@ function WriteStoryPageContent() {
 
     if (rootPages.length === 1) {
       rootPage = rootPages[0];
-      logger.log(`🏁 Page racine trouvée: ${rootPage._id.substring(0, 8)}`);
+      console.log(`🏁 Page racine trouvée: ${rootPage._id.substring(0, 8)}`);
     } else {
-      logger.log(`🔍 ${rootPages.length} pages racines trouvées, sélection...`);
+      console.log(`🔍 ${rootPages.length} pages racines trouvées, sélection...`);
 
       // Prendre celle qui a le plus de choix
       rootPage = rootPages.reduce((best, current) =>
         current.choices.length > best.choices.length ? current : best
       );
 
-      logger.log(`✅ Page racine sélectionnée: ${rootPage._id.substring(0, 8)} (${rootPage.choices.length} choix)`);
+      console.log(`✅ Page racine sélectionnée: ${rootPage._id.substring(0, 8)} (${rootPage.choices.length} choix)`);
     }
 
     // 5. PARCOURS EN LARGEUR avec détection de cycles
@@ -136,7 +135,7 @@ function WriteStoryPageContent() {
 
       // Éviter de revisiter une page (gérer les cycles)
       if (visited.has(current._id)) {
-        logger.warn(`⚠️ Page déjà visitée (cycle): ${current._id.substring(0, 8)}`);
+        console.warn(`⚠️ Page déjà visitée (cycle): ${current._id.substring(0, 8)}`);
         continue;
       }
 
@@ -149,13 +148,13 @@ function WriteStoryPageContent() {
           const childPage = uniquePagesMap.get(choice.target_page_id);
 
           if (!childPage) {
-            logger.warn(`⚠️ Page cible introuvable: ${choice.target_page_id.substring(0, 8)}`);
+            console.warn(`⚠️ Page cible introuvable: ${choice.target_page_id.substring(0, 8)}`);
             return;
           }
 
           // Détecter les cycles : ne pas ajouter si déjà visité ou en cours de traitement
           if (visited.has(childPage._id)) {
-            logger.warn(`🔄 Lien de cycle ignoré: ${current._id.substring(0, 8)} -> ${childPage._id.substring(0, 8)} (via "${choice.text}")`);
+            console.warn(`🔄 Lien de cycle ignoré: ${current._id.substring(0, 8)} -> ${childPage._id.substring(0, 8)} (via "${choice.text}")`);
             return;
           }
 
@@ -170,19 +169,19 @@ function WriteStoryPageContent() {
     // 6. AJOUTER LES PAGES ORPHELINES à la fin
     uniquePages.forEach(page => {
       if (!visited.has(page._id)) {
-        logger.warn(`⚠️ Page orpheline ajoutée: ${page._id.substring(0, 8)}`);
+        console.warn(`⚠️ Page orpheline ajoutée: ${page._id.substring(0, 8)}`);
         sorted.push(page);
       }
     });
 
-    logger.log(`✅ Tri terminé: ${sorted.length} pages (racine: ${sorted[0]._id.substring(0, 8)})`);
+    console.log(`✅ Tri terminé: ${sorted.length} pages (racine: ${sorted[0]._id.substring(0, 8)})`);
     return sorted;
   };
 
   const loadStoryAndPages = useCallback(async () => {
     try {
       setIsLoading(true);
-      logger.log("📚 Chargement de l'histoire:", storyId);
+      console.log("📚 Chargement de l'histoire:", storyId);
 
       // Charger les infos de l'histoire
       const story = await storiesApi.getById(storyId!);
@@ -193,11 +192,11 @@ function WriteStoryPageContent() {
 
       // Charger toutes les pages de cette histoire
       const allPages = await storyPagesApi.getByStoryId(storyId!);
-      logger.log("✅ Pages récupérées:", allPages);
+      console.log("✅ Pages récupérées:", allPages);
 
       // Si aucune page n'existe, créer la première
       if (allPages.length === 0) {
-        logger.log("📝 Création de la première page...");
+        console.log("📝 Création de la première page...");
         const firstPage = await storyPagesApi.create({
           story_id: storyId!,
           content: "",
@@ -222,15 +221,15 @@ function WriteStoryPageContent() {
 
         // Trier les pages pour que la page racine (sans parent) soit en premier
         const sortedPages = sortPagesTree(pagesWithChoices);
-        logger.log(`📋 Ordre des pages après tri:`, sortedPages.map((p, i) => `${i}: ${p._id.substring(0, 8)}...`));
-        logger.log(`🏁 Première page (racine):`, sortedPages[0]?._id);
+        console.log(`📋 Ordre des pages après tri:`, sortedPages.map((p, i) => `${i}: ${p._id.substring(0, 8)}...`));
+        console.log(`🏁 Première page (racine):`, sortedPages[0]?._id);
 
         setPages(sortedPages);
         setCurrentPage(sortedPages[0]);
       }
     } catch (err) {
       const apiError = err as ApiError;
-      logger.error("❌ Erreur lors du chargement:", apiError);
+      console.error("❌ Erreur lors du chargement:", apiError);
       setError(apiError.message || "Erreur lors du chargement de l'histoire");
     } finally {
       setIsLoading(false);
@@ -262,13 +261,13 @@ function WriteStoryPageContent() {
       await storyPagesApi.update(currentPage._id, {
         content: currentPage.content,
       });
-      logger.log("✅ Page sauvegardée");
+      console.log("✅ Page sauvegardée");
 
       // Mettre à jour la liste des pages
       setPages(pages.map(p => p._id === currentPage._id ? currentPage : p));
     } catch (err) {
       const apiError = err as ApiError;
-      logger.error("❌ Erreur lors de la sauvegarde:", apiError);
+      console.error("❌ Erreur lors de la sauvegarde:", apiError);
       setError("Erreur lors de la sauvegarde");
     } finally {
       setIsSaving(false);
@@ -317,13 +316,13 @@ function WriteStoryPageContent() {
       await storyChoicesApi.update(choice._id, {
         text: choice.text,
       });
-      logger.log("✅ Choix sauvegardé:", choice._id);
+      console.log("✅ Choix sauvegardé:", choice._id);
 
       // Mettre à jour la liste des pages
       setPages(pages.map(p => p._id === currentPage._id ? currentPage : p));
     } catch (err) {
       const apiError = err as ApiError;
-      logger.error("❌ Erreur lors de la sauvegarde du choix:", apiError);
+      console.error("❌ Erreur lors de la sauvegarde du choix:", apiError);
       setError("Erreur lors de la sauvegarde du choix");
     } finally {
       setIsSaving(false);
@@ -354,7 +353,7 @@ function WriteStoryPageContent() {
         target_page_id: "", // Pas de page cible pour l'instant
       });
 
-      logger.log("✅ Choix sauvegardé (sans développement):", savedChoice);
+      console.log("✅ Choix sauvegardé (sans développement):", savedChoice);
 
       // Mettre à jour le choix dans l'état local
       const updatedPage = {
@@ -368,7 +367,7 @@ function WriteStoryPageContent() {
       setPages(pages.map(p => p._id === currentPage._id ? updatedPage : p));
     } catch (err) {
       const apiError = err as ApiError;
-      logger.error("❌ Erreur lors de la sauvegarde du choix:", apiError);
+      console.error("❌ Erreur lors de la sauvegarde du choix:", apiError);
       setError(apiError.message || "Erreur lors de la sauvegarde du choix");
     } finally {
       setIsSaving(false);
@@ -394,7 +393,7 @@ function WriteStoryPageContent() {
         is_ending: false,
       });
 
-      logger.log("✅ Nouvelle page créée:", newPage);
+      console.log("✅ Nouvelle page créée:", newPage);
 
       // 2. Créer ou mettre à jour le choix avec la page cible
       let savedChoice: StoryChoice;
@@ -413,7 +412,7 @@ function WriteStoryPageContent() {
         });
       }
 
-      logger.log("✅ Choix sauvegardé:", savedChoice);
+      console.log("✅ Choix sauvegardé:", savedChoice);
 
       // 3. Mettre à jour la page actuelle avec le choix sauvegardé
       const updatedCurrentPage = {
@@ -436,7 +435,7 @@ function WriteStoryPageContent() {
       setCurrentPage(newPageWithChoices);
     } catch (err) {
       const apiError = err as ApiError;
-      logger.error("❌ Erreur lors du développement:", apiError);
+      console.error("❌ Erreur lors du développement:", apiError);
       setError(apiError.message || "Erreur lors du développement du choix");
     } finally {
       setIsSaving(false);
@@ -479,7 +478,7 @@ function WriteStoryPageContent() {
         });
       }
 
-      logger.log("✅ Choix lié à la page existante:", savedChoice);
+      console.log("✅ Choix lié à la page existante:", savedChoice);
 
       // Mettre à jour la page actuelle avec le choix sauvegardé
       const updatedCurrentPage = {
@@ -497,7 +496,7 @@ function WriteStoryPageContent() {
       setLinkingChoiceId(null);
     } catch (err) {
       const apiError = err as ApiError;
-      logger.error("❌ Erreur lors du lien:", apiError);
+      console.error("❌ Erreur lors du lien:", apiError);
       setError(apiError.message || "Erreur lors du lien vers la page");
     } finally {
       setIsSaving(false);
@@ -518,10 +517,10 @@ function WriteStoryPageContent() {
       setCurrentPage(updatedPage);
       setPages(pages.map(p => p._id === currentPage._id ? updatedPage : p));
 
-      logger.log("✅ Page marquée comme fin");
+      console.log("✅ Page marquée comme fin");
     } catch (err) {
       const apiError = err as ApiError;
-      logger.error("❌ Erreur:", apiError);
+      console.error("❌ Erreur:", apiError);
       setError("Erreur lors de la sauvegarde");
     } finally {
       setIsSaving(false);
@@ -542,10 +541,10 @@ function WriteStoryPageContent() {
       setCurrentPage(updatedPage);
       setPages(pages.map(p => p._id === currentPage._id ? updatedPage : p));
 
-      logger.log("✅ Page n'est plus une fin");
+      console.log("✅ Page n'est plus une fin");
     } catch (err) {
       const apiError = err as ApiError;
-      logger.error("❌ Erreur:", apiError);
+      console.error("❌ Erreur:", apiError);
       setError("Erreur lors de la sauvegarde");
     } finally {
       setIsSaving(false);
@@ -554,8 +553,8 @@ function WriteStoryPageContent() {
 
   // Convertir les pages en nœuds pour la visualisation d'arbre (mémorisé pour éviter les recalculs)
   const treeNodes = useMemo(() => {
-    logger.log("🔄 Génération des nœuds d'arborescence...");
-    logger.log(`📊 Nombre de pages:`, pages.length);
+    console.log("🔄 Génération des nœuds d'arborescence...");
+    console.log(`📊 Nombre de pages:`, pages.length);
 
     // Analyser les relations parent-enfant
     const parentChildMap = new Map<string, string[]>();
@@ -563,7 +562,7 @@ function WriteStoryPageContent() {
     const cycleLinks = new Set<string>(); // Format: "parentId->childId"
 
     pages.forEach(page => {
-      logger.log(`📄 Page ${page._id.substring(0, 8)}:`, {
+      console.log(`📄 Page ${page._id.substring(0, 8)}:`, {
         choices: page.choices.length,
         isEnding: page.is_ending,
         choiceTargets: page.choices.map(c => c.target_page_id?.substring(0, 8))
@@ -583,16 +582,16 @@ function WriteStoryPageContent() {
           }
           childParentMap.get(choice.target_page_id)!.push(page._id);
 
-          logger.log(`🔗 Lien: ${page._id.substring(0, 8)} -> ${choice.target_page_id.substring(0, 8)} (choix: "${choice.text}")`);
+          console.log(`🔗 Lien: ${page._id.substring(0, 8)} -> ${choice.target_page_id.substring(0, 8)} (choix: "${choice.text}")`);
         }
       });
     });
 
     // Détecter les cycles et les pages avec plusieurs parents
-    logger.log("🔍 Analyse des relations:");
+    console.log("🔍 Analyse des relations:");
     childParentMap.forEach((parents, childId) => {
       if (parents.length > 1) {
-        logger.warn(`⚠️ La page ${childId.substring(0, 8)} a ${parents.length} parents:`, parents.map(p => p.substring(0, 8)));
+        console.warn(`⚠️ La page ${childId.substring(0, 8)} a ${parents.length} parents:`, parents.map(p => p.substring(0, 8)));
       }
     });
 
@@ -615,7 +614,7 @@ function WriteStoryPageContent() {
         if (ancestors.has(childId)) {
           const cycleKey = `${nodeId}->${childId}`;
           cycleLinks.add(cycleKey);
-          logger.warn(`🔄 CYCLE: ${nodeId.substring(0, 8)} -> ${childId.substring(0, 8)}`);
+          console.warn(`🔄 CYCLE: ${nodeId.substring(0, 8)} -> ${childId.substring(0, 8)}`);
         } else {
           detectCycles(childId, newAncestors);
         }
@@ -658,7 +657,7 @@ function WriteStoryPageContent() {
       }
 
       if (allParents.length > 1) {
-        logger.warn(`⚠️ Page ${page._id.substring(0, 8)} a ${allParents.length} parents possibles:`,
+        console.warn(`⚠️ Page ${page._id.substring(0, 8)} a ${allParents.length} parents possibles:`,
           allParents.map(ap => `${ap.pageId.substring(0, 8)} (${ap.choiceText})${ap.isCycle ? ' [CYCLE]' : ''}`));
       }
 
@@ -670,16 +669,16 @@ function WriteStoryPageContent() {
         parentChoiceId = nonCyclicParent.choiceId;
         label = nonCyclicParent.choiceText;
 
-        logger.log(`🔗 Page ${page._id.substring(0, 8)} -> parent: ${parentId.substring(0, 8)} (via "${label}")`);
+        console.log(`🔗 Page ${page._id.substring(0, 8)} -> parent: ${parentId.substring(0, 8)} (via "${label}")`);
       } else if (allParents.length > 0) {
         // Tous les parents sont cycliques, on ne prend pas de parent
-        logger.warn(`⚠️ Page ${page._id.substring(0, 8)} : tous les parents sont cycliques, devient racine`);
+        console.warn(`⚠️ Page ${page._id.substring(0, 8)} : tous les parents sont cycliques, devient racine`);
       }
 
       // Si la page n'a pas de parent, c'est la page racine = "Début"
       if (!parentId) {
         label = "Début";
-        logger.log(`🏁 Page racine trouvée: ${page._id.substring(0, 8)} (index ${index})`);
+        console.log(`🏁 Page racine trouvée: ${page._id.substring(0, 8)} (index ${index})`);
       }
 
       const node = {
@@ -701,7 +700,7 @@ function WriteStoryPageContent() {
         parentChoiceId,
       };
 
-      logger.log(`📦 Nœud créé:`, {
+      console.log(`📦 Nœud créé:`, {
         id: node.id.substring(0, 8),
         label: node.label,
         parentId: node.parentId?.substring(0, 8),
@@ -712,8 +711,8 @@ function WriteStoryPageContent() {
       return node;
     });
 
-    logger.log(`🌳 ${nodes.length} nœuds générés pour l'arborescence`);
-    logger.log(`📋 Résumé des nœuds:`, nodes.map(n => ({
+    console.log(`🌳 ${nodes.length} nœuds générés pour l'arborescence`);
+    console.log(`📋 Résumé des nœuds:`, nodes.map(n => ({
       id: n.id.substring(0, 8),
       label: n.label,
       parentId: n.parentId?.substring(0, 8),
@@ -721,7 +720,7 @@ function WriteStoryPageContent() {
     })));
 
     if (cycleLinks.size > 0) {
-      logger.warn(`⚠️ ${cycleLinks.size} lien(s) cyclique(s) détecté(s) et marqué(s) 🔄`);
+      console.warn(`⚠️ ${cycleLinks.size} lien(s) cyclique(s) détecté(s) et marqué(s) 🔄`);
     }
 
     return nodes;
@@ -737,9 +736,9 @@ function WriteStoryPageContent() {
     const page = pages.find((p) => p._id === node.id);
     if (page) {
       setCurrentPage(page);
-      logger.log(`✅ Navigation vers le nœud: ${node.label || "Sans nom"} (${node.id})`);
+      console.log(`✅ Navigation vers le nœud: ${node.label || "Sans nom"} (${node.id})`);
     } else {
-      logger.error(`❌ Page non trouvée pour le nœud: ${node.id}`);
+      console.error(`❌ Page non trouvée pour le nœud: ${node.id}`);
     }
   };
 
@@ -766,11 +765,11 @@ function WriteStoryPageContent() {
       await storiesApi.update(storyId, { status: 'published' });
       setStoryStatus('published');
 
-      logger.log("✅ Histoire publiée avec succès !");
+      console.log("✅ Histoire publiée avec succès !");
       alert("🎉 Votre histoire a été publiée avec succès ! Elle est maintenant visible dans la section 'Lire les histoires'.");
     } catch (err) {
       const apiError = err as ApiError;
-      logger.error("❌ Erreur lors de la publication:", apiError);
+      console.error("❌ Erreur lors de la publication:", apiError);
       setError(apiError.message || "Erreur lors de la publication de l'histoire");
     } finally {
       setIsPublishing(false);
@@ -787,11 +786,11 @@ function WriteStoryPageContent() {
       await storiesApi.update(storyId, { status: 'draft' });
       setStoryStatus('draft');
 
-      logger.log("Histoire remise en brouillon");
+      console.log("Histoire remise en brouillon");
       alert("Votre histoire a été remise en brouillon.");
     } catch (err) {
       const apiError = err as ApiError;
-      logger.error("❌ Erreur:", apiError);
+      console.error("❌ Erreur:", apiError);
       setError(apiError.message || "Erreur lors de la modification du statut");
     } finally {
       setIsPublishing(false);
@@ -808,13 +807,13 @@ function WriteStoryPageContent() {
       // Supprimer l'histoire (le backend supprime automatiquement les pages, choix et liens associés)
       await storiesApi.delete(storyId);
 
-      logger.log("✅ Histoire supprimée avec succès");
+      console.log("✅ Histoire supprimée avec succès");
 
       // Rediriger vers la liste des histoires
       router.push("/stories");
     } catch (err) {
       const apiError = err as ApiError;
-      logger.error("❌ Erreur lors de la suppression:", apiError);
+      console.error("❌ Erreur lors de la suppression:", apiError);
       setError(apiError.message || "Erreur lors de la suppression de l'histoire");
       setIsDeleting(false);
       setShowDeleteConfirm(false);
