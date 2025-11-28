@@ -11,10 +11,14 @@ export interface AuthenticatedRequest extends Request {
   file?: Express.Multer.File | undefined;
 }
 
-// Récupérer toutes les stories
+// Récupérer toutes les stories (exclut les censurées pour les utilisateurs normaux)
 export async function getAllStories(req: Request, res: Response, next: NextFunction) {
   try {
-    const stories = await Story.find().populate('author', 'username');
+    // Exclure les histoires censurées et ne montrer que les publiées
+    const stories = await Story.find({ 
+      'censorship.censored': { $ne: true },
+      status: 'published'
+    }).populate('author', 'username');
     res.json(stories);
   } catch (err) {
     next(err); // Passe l'erreur au errorHandler
@@ -269,6 +273,114 @@ export async function deleteCoverImage(req: AuthenticatedRequest, res: Response,
             message: 'Image supprimée avec succès',
             story: updatedStory
         });
+    } catch (err) {
+        next(err);
+    }
+}
+
+// Censurer une histoire (admin seulement)
+export async function censorStory(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+        const { storyId } = req.params;
+        const { reason } = req.body;
+        const adminId = (req.user as JwtPayload)?.userId;
+        const userRole = (req.user as JwtPayload)?.role;
+
+        // Vérifier que l'utilisateur est admin
+        if (userRole !== 'admin') {
+            return res.status(403).json({ message: 'Accès refusé : seuls les administrateurs peuvent censurer des histoires' });
+        }
+
+        // Récupérer l'histoire
+        const story = await Story.findById(storyId);
+        if (!story) {
+            return res.status(404).json({ message: 'Histoire non trouvée' });
+        }
+
+        // Mettre à jour la censure
+        const updatedStory = await Story.findByIdAndUpdate(
+            storyId,
+            {
+                censorship: {
+                    censored: true,
+                    admin: adminId,
+                    censorshipDate: new Date(),
+                    reason: reason || 'Contenu inapproprié'
+                }
+            },
+            { new: true }
+        ).populate('author', 'username email');
+
+        console.log(`🚫 [Admin] Histoire "${story.title}" censurée par l'admin ${adminId}`);
+
+        res.json({
+            message: 'Histoire censurée avec succès',
+            story: updatedStory
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
+// Lever la censure d'une histoire (admin seulement)
+export async function uncensorStory(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+        const { storyId } = req.params;
+        const adminId = (req.user as JwtPayload)?.userId;
+        const userRole = (req.user as JwtPayload)?.role;
+
+        // Vérifier que l'utilisateur est admin
+        if (userRole !== 'admin') {
+            return res.status(403).json({ message: 'Accès refusé : seuls les administrateurs peuvent lever la censure' });
+        }
+
+        // Récupérer l'histoire
+        const story = await Story.findById(storyId);
+        if (!story) {
+            return res.status(404).json({ message: 'Histoire non trouvée' });
+        }
+
+        // Lever la censure
+        const updatedStory = await Story.findByIdAndUpdate(
+            storyId,
+            {
+                censorship: {
+                    censored: false,
+                    admin: undefined,
+                    censorshipDate: undefined,
+                    reason: undefined
+                }
+            },
+            { new: true }
+        ).populate('author', 'username email');
+
+        console.log(`✅ [Admin] Censure levée pour l'histoire "${story.title}" par l'admin ${adminId}`);
+
+        res.json({
+            message: 'Censure levée avec succès',
+            story: updatedStory
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
+// Récupérer toutes les histoires (admin - inclut les censurées)
+export async function getAllStoriesAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+        const userRole = (req.user as JwtPayload)?.role;
+
+        // Vérifier que l'utilisateur est admin
+        if (userRole !== 'admin') {
+            return res.status(403).json({ message: 'Accès refusé : seuls les administrateurs peuvent accéder à cette ressource' });
+        }
+
+        const stories = await Story.find()
+            .populate('author', 'username email')
+            .populate('censorship.admin', 'username')
+            .sort({ createdAt: -1 });
+
+        res.json(stories);
     } catch (err) {
         next(err);
     }
