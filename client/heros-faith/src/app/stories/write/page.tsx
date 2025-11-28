@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PrismTransition from "@/components/PrismTransition";
 import StoryTreeVisualization from "@/components/StoryTreeVisualization";
@@ -44,78 +44,127 @@ function WriteStoryPageContent() {
   const sortPagesTree = (pages: PageWithChoices[]): PageWithChoices[] => {
     if (pages.length === 0) return pages;
 
-    // Trouver la page racine (celle qui n'est la cible d'aucun choix)
-    const targetPageIds = new Set<string>();
-
+    // 1. DÉDUPLIQUER les pages (au cas où il y aurait des doublons)
+    const uniquePagesMap = new Map<string, PageWithChoices>();
     pages.forEach(page => {
+      if (!uniquePagesMap.has(page._id)) {
+        uniquePagesMap.set(page._id, page);
+      } else {
+        console.warn(`⚠️ Page dupliquée détectée et ignorée: ${page._id.substring(0, 8)}`);
+      }
+    });
+    const uniquePages = Array.from(uniquePagesMap.values());
+
+    if (uniquePages.length !== pages.length) {
+      console.warn(`⚠️ ${pages.length - uniquePages.length} page(s) dupliquée(s) supprimée(s)`);
+    }
+
+    // 2. DÉTECTER LES CYCLES et construire le graphe
+    const targetPageIds = new Set<string>();
+    const cycles: string[] = [];
+
+    uniquePages.forEach(page => {
       page.choices.forEach(choice => {
         if (choice.target_page_id) {
+          // Vérifier si c'est un cycle (lien qui remonte)
+          const targetPage = uniquePagesMap.get(choice.target_page_id);
+          if (targetPage) {
+            // Vérifier si la cible pointe vers cette page (cycle direct)
+            const hasCycleBack = targetPage.choices.some(c => c.target_page_id === page._id);
+            if (hasCycleBack) {
+              console.warn(`🔄 Cycle détecté: ${page._id.substring(0, 8)} ↔ ${choice.target_page_id.substring(0, 8)}`);
+              cycles.push(`${page._id} -> ${choice.target_page_id}`);
+            }
+          }
           targetPageIds.add(choice.target_page_id);
         }
       });
     });
 
-    // Trouver toutes les pages racines (qui ne sont ciblées par aucun choix)
-    const rootPages = pages.filter(p => !targetPageIds.has(p._id));
+    // 3. TROUVER LA PAGE RACINE (avec gestion intelligente des cycles)
+    // Pages qui ne sont ciblées par aucun choix = candidates racines
+    let rootPages = uniquePages.filter(p => !targetPageIds.has(p._id));
 
+    // Si aucune page racine trouvée (tous les nœuds sont dans un cycle)
     if (rootPages.length === 0) {
-      console.warn("⚠️ Aucune page racine trouvée, utilisation de la première page");
-      return pages;
+      console.warn(`⚠️ CYCLES DÉTECTÉS - Aucune vraie racine trouvée!`);
+      console.warn(`🔍 ${cycles.length} cycle(s) détecté(s):`, cycles);
+
+      // Stratégie : prendre la première page comme racine artificielle
+      // et ignorer les liens qui pointent vers elle depuis des pages "descendantes"
+      rootPages = [uniquePages[0]];
+      console.warn(`⚡ Utilisation de la première page comme racine: ${rootPages[0]._id.substring(0, 8)}`);
     }
 
-    // S'il y a plusieurs pages racines, prendre celle qui a des choix en priorité
+    // 4. SÉLECTIONNER LA MEILLEURE PAGE RACINE
     let rootPage: PageWithChoices;
 
     if (rootPages.length === 1) {
       rootPage = rootPages[0];
-      console.log(`🏁 Page racine unique trouvée: ${rootPage._id}`);
+      console.log(`🏁 Page racine trouvée: ${rootPage._id.substring(0, 8)}`);
     } else {
-      console.warn(`⚠️ ${rootPages.length} pages racines trouvées, sélection de celle avec des choix...`);
+      console.log(`🔍 ${rootPages.length} pages racines trouvées, sélection...`);
 
-      // Chercher une page racine qui a des choix
-      const rootWithChoices = rootPages.find(p => p.choices.length > 0);
+      // Prendre celle qui a le plus de choix
+      rootPage = rootPages.reduce((best, current) =>
+        current.choices.length > best.choices.length ? current : best
+      );
 
-      if (rootWithChoices) {
-        rootPage = rootWithChoices;
-        console.log(`✅ Page racine avec choix sélectionnée: ${rootPage._id} (${rootPage.choices.length} choix)`);
-      } else {
-        // Aucune page racine n'a de choix, prendre la première
-        rootPage = rootPages[0];
-        console.warn(`⚠️ Aucune page racine avec choix, utilisation de la première: ${rootPage._id}`);
-      }
+      console.log(`✅ Page racine sélectionnée: ${rootPage._id.substring(0, 8)} (${rootPage.choices.length} choix)`);
     }
 
-    // Trier en parcourant l'arbre en largeur
+    // 5. PARCOURS EN LARGEUR avec détection de cycles
     const sorted: PageWithChoices[] = [];
     const queue: PageWithChoices[] = [rootPage];
     const visited = new Set<string>();
+    const inQueue = new Set<string>([rootPage._id]);
 
     while (queue.length > 0) {
       const current = queue.shift()!;
+      inQueue.delete(current._id);
 
-      if (visited.has(current._id)) continue;
+      // Éviter de revisiter une page (gérer les cycles)
+      if (visited.has(current._id)) {
+        console.warn(`⚠️ Page déjà visitée (cycle): ${current._id.substring(0, 8)}`);
+        continue;
+      }
+
       visited.add(current._id);
       sorted.push(current);
 
-      // Ajouter les enfants (pages ciblées par les choix de cette page)
+      // Ajouter les enfants (pages ciblées par les choix)
       current.choices.forEach(choice => {
         if (choice.target_page_id) {
-          const childPage = pages.find(p => p._id === choice.target_page_id);
-          if (childPage && !visited.has(childPage._id)) {
+          const childPage = uniquePagesMap.get(choice.target_page_id);
+
+          if (!childPage) {
+            console.warn(`⚠️ Page cible introuvable: ${choice.target_page_id.substring(0, 8)}`);
+            return;
+          }
+
+          // Détecter les cycles : ne pas ajouter si déjà visité ou en cours de traitement
+          if (visited.has(childPage._id)) {
+            console.warn(`🔄 Lien de cycle ignoré: ${current._id.substring(0, 8)} -> ${childPage._id.substring(0, 8)} (via "${choice.text}")`);
+            return;
+          }
+
+          if (!inQueue.has(childPage._id)) {
             queue.push(childPage);
+            inQueue.add(childPage._id);
           }
         }
       });
     }
 
-    // Ajouter les pages non visitées (orphelines) à la fin
-    pages.forEach(page => {
+    // 6. AJOUTER LES PAGES ORPHELINES à la fin
+    uniquePages.forEach(page => {
       if (!visited.has(page._id)) {
+        console.warn(`⚠️ Page orpheline ajoutée: ${page._id.substring(0, 8)}`);
         sorted.push(page);
       }
     });
 
-    console.log(`✅ Pages triées: ${sorted.length} pages, racine = "${sorted[0]?._id}"`);
+    console.log(`✅ Tri terminé: ${sorted.length} pages (racine: ${sorted[0]._id.substring(0, 8)})`);
     return sorted;
   };
 
@@ -490,48 +539,186 @@ function WriteStoryPageContent() {
     }
   };
 
-  // Convertir les pages en nœuds pour la visualisation d'arbre
-  const convertPagesToNodes = () => {
+  // Convertir les pages en nœuds pour la visualisation d'arbre (mémorisé pour éviter les recalculs)
+  const treeNodes = useMemo(() => {
+    console.log("🔄 Génération des nœuds d'arborescence...");
+    console.log(`📊 Nombre de pages:`, pages.length);
+
+    // Analyser les relations parent-enfant
+    const parentChildMap = new Map<string, string[]>();
+    const childParentMap = new Map<string, string[]>();
+    const cycleLinks = new Set<string>(); // Format: "parentId->childId"
+
+    pages.forEach(page => {
+      console.log(`📄 Page ${page._id.substring(0, 8)}:`, {
+        choices: page.choices.length,
+        isEnding: page.is_ending,
+        choiceTargets: page.choices.map(c => c.target_page_id?.substring(0, 8))
+      });
+
+      page.choices.forEach(choice => {
+        if (choice.target_page_id) {
+          // Enregistrer la relation parent -> enfant
+          if (!parentChildMap.has(page._id)) {
+            parentChildMap.set(page._id, []);
+          }
+          parentChildMap.get(page._id)!.push(choice.target_page_id);
+
+          // Enregistrer la relation enfant -> parents (peut avoir plusieurs parents !)
+          if (!childParentMap.has(choice.target_page_id)) {
+            childParentMap.set(choice.target_page_id, []);
+          }
+          childParentMap.get(choice.target_page_id)!.push(page._id);
+
+          console.log(`🔗 Lien: ${page._id.substring(0, 8)} -> ${choice.target_page_id.substring(0, 8)} (choix: "${choice.text}")`);
+        }
+      });
+    });
+
+    // Détecter les cycles et les pages avec plusieurs parents
+    console.log("🔍 Analyse des relations:");
+    childParentMap.forEach((parents, childId) => {
+      if (parents.length > 1) {
+        console.warn(`⚠️ La page ${childId.substring(0, 8)} a ${parents.length} parents:`, parents.map(p => p.substring(0, 8)));
+      }
+    });
+
+    // Détecter les liens cycliques (qui remontent dans l'arbre)
+    const visited = new Set<string>();
+    const detectCycles = (nodeId: string, ancestors: Set<string> = new Set()) => {
+      if (ancestors.has(nodeId)) {
+        // Cycle détecté !
+        return;
+      }
+
+      if (visited.has(nodeId)) return;
+      visited.add(nodeId);
+
+      const newAncestors = new Set(ancestors);
+      newAncestors.add(nodeId);
+
+      const children = parentChildMap.get(nodeId) || [];
+      children.forEach(childId => {
+        if (ancestors.has(childId)) {
+          const cycleKey = `${nodeId}->${childId}`;
+          cycleLinks.add(cycleKey);
+          console.warn(`🔄 CYCLE: ${nodeId.substring(0, 8)} -> ${childId.substring(0, 8)}`);
+        } else {
+          detectCycles(childId, newAncestors);
+        }
+      });
+    };
+
+    // Démarrer la détection depuis les racines
+    const roots = pages.filter(p => !childParentMap.has(p._id) || childParentMap.get(p._id)!.length === 0);
+    if (roots.length > 0) {
+      roots.forEach(root => detectCycles(root._id));
+    } else {
+      // Pas de racine claire, démarrer depuis la première page
+      if (pages.length > 0) {
+        detectCycles(pages[0]._id);
+      }
+    }
+
     const nodes = pages.map((page, index) => {
       // Trouver le parent de cette page (la page qui a un choix pointant vers celle-ci)
       let parentId: string | undefined;
       let parentChoiceId: string | undefined;
       let label: string | undefined;
 
+      // Chercher TOUS les parents potentiels, en EXCLUANT les liens cycliques
+      const allParents: Array<{ pageId: string, choiceId: string, choiceText: string, isCycle: boolean }> = [];
+
       for (const p of pages) {
         const choice = p.choices.find((c) => c.target_page_id === page._id);
         if (choice) {
-          parentId = p._id;
-          parentChoiceId = choice._id;
-          label = choice.text || "Choix sans nom";
-          break;
+          const cycleKey = `${p._id}->${page._id}`;
+          const isCycle = cycleLinks.has(cycleKey);
+
+          allParents.push({
+            pageId: p._id,
+            choiceId: choice._id,
+            choiceText: choice.text || "Choix sans nom",
+            isCycle
+          });
         }
+      }
+
+      if (allParents.length > 1) {
+        console.warn(`⚠️ Page ${page._id.substring(0, 8)} a ${allParents.length} parents possibles:`,
+          allParents.map(ap => `${ap.pageId.substring(0, 8)} (${ap.choiceText})${ap.isCycle ? ' [CYCLE]' : ''}`));
+      }
+
+      // Prendre le premier parent NON CYCLIQUE trouvé
+      const nonCyclicParent = allParents.find(p => !p.isCycle);
+
+      if (nonCyclicParent) {
+        parentId = nonCyclicParent.pageId;
+        parentChoiceId = nonCyclicParent.choiceId;
+        label = nonCyclicParent.choiceText;
+
+        console.log(`🔗 Page ${page._id.substring(0, 8)} -> parent: ${parentId.substring(0, 8)} (via "${label}")`);
+      } else if (allParents.length > 0) {
+        // Tous les parents sont cycliques, on ne prend pas de parent
+        console.warn(`⚠️ Page ${page._id.substring(0, 8)} : tous les parents sont cycliques, devient racine`);
       }
 
       // Si la page n'a pas de parent, c'est la page racine = "Début"
       if (!parentId) {
         label = "Début";
-        console.log(`🏁 Page racine trouvée: ${page._id} (index ${index})`);
+        console.log(`🏁 Page racine trouvée: ${page._id.substring(0, 8)} (index ${index})`);
       }
 
-      return {
+      const node = {
         id: page._id,
         label: label,
         context: page.content || "Page vide",
-        choices: page.choices.map((c) => ({
-          id: c._id,
-          text: c.text,
-          nextNodeId: c.target_page_id || undefined,
-        })),
+        choices: page.choices.map((c) => {
+          const cycleKey = `${page._id}->${c.target_page_id}`;
+          const isCycle = c.target_page_id && cycleLinks.has(cycleKey);
+
+          return {
+            id: c._id,
+            text: c.text + (isCycle ? " 🔄" : ""), // Marquer visuellement les choix cycliques
+            nextNodeId: c.target_page_id || undefined,
+          };
+        }),
         isEnd: page.is_ending || false,
         parentId,
         parentChoiceId,
       };
+
+      console.log(`📦 Nœud créé:`, {
+        id: node.id.substring(0, 8),
+        label: node.label,
+        parentId: node.parentId?.substring(0, 8),
+        choicesCount: node.choices.length,
+        isEnd: node.isEnd
+      });
+
+      return node;
     });
 
-    console.log(`🌳 Nœuds générés pour l'arborescence:`, nodes.map(n => ({ id: n.id, label: n.label, parentId: n.parentId })));
+    console.log(`🌳 ${nodes.length} nœuds générés pour l'arborescence`);
+    console.log(`📋 Résumé des nœuds:`, nodes.map(n => ({
+      id: n.id.substring(0, 8),
+      label: n.label,
+      parentId: n.parentId?.substring(0, 8),
+      hasChoices: n.choices.length > 0
+    })));
+
+    if (cycleLinks.size > 0) {
+      console.warn(`⚠️ ${cycleLinks.size} lien(s) cyclique(s) détecté(s) et marqué(s) 🔄`);
+    }
+
     return nodes;
-  };
+  }, [pages]);
+
+  // Mémoriser le nœud courant
+  const currentTreeNode = useMemo(() => {
+    if (!currentPage) return undefined;
+    return treeNodes.find((n) => n.id === currentPage._id);
+  }, [treeNodes, currentPage]);
 
   const handleNodeSelect = (node: { id: string; label?: string; context: string; choices: any[]; isEnd: boolean; parentId?: string; parentChoiceId?: string }) => {
     const page = pages.find((p) => p._id === node.id);
@@ -673,11 +860,11 @@ function WriteStoryPageContent() {
       </button>
 
       {/* Arborescence en haut à droite */}
-      {currentPage && pages.length > 0 && (
+      {pages.length > 0 && (
         <div className="fixed top-24 right-6 z-[60]">
           <StoryTreeVisualization
-            nodes={convertPagesToNodes()}
-            currentNode={convertPagesToNodes().find((n) => n.id === currentPage._id)}
+            nodes={treeNodes}
+            currentNode={currentTreeNode}
             onNodeSelect={handleNodeSelect}
           />
         </div>
@@ -698,7 +885,7 @@ function WriteStoryPageContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               <span className="text-cyan-400 font-medium text-lg">
-                {convertPagesToNodes().find((n) => n.id === currentPage._id)?.label || "Début"}
+                {currentTreeNode?.label || "Début"}
               </span>
             </div>
           )}
@@ -1004,7 +1191,7 @@ function WriteStoryPageContent() {
                   if (page._id === currentPage?._id) return false;
                   // Filtrer par recherche
                   if (linkSearchQuery.trim()) {
-                    const nodeLabel = convertPagesToNodes().find(n => n.id === page._id)?.label || "";
+                    const nodeLabel = treeNodes.find(n => n.id === page._id)?.label || "";
                     const searchLower = linkSearchQuery.toLowerCase();
                     return (
                       page.content.toLowerCase().includes(searchLower) ||
@@ -1014,7 +1201,7 @@ function WriteStoryPageContent() {
                   return true;
                 })
                 .map(page => {
-                  const nodeInfo = convertPagesToNodes().find(n => n.id === page._id);
+                  const nodeInfo = treeNodes.find(n => n.id === page._id);
                   return (
                     <button
                       key={page._id}

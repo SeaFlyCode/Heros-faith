@@ -39,6 +39,22 @@ export default function StoryTreeVisualization({
   const containerRef = useRef<HTMLDivElement>(null);
   const miniContainerRef = useRef<HTMLDivElement>(null);
 
+  // Log des props reçues
+  useEffect(() => {
+    console.log("🎨 [StoryTreeVisualization] Rendu avec:", {
+      nodesCount: nodes.length,
+      currentNodeId: currentNode?.id?.substring(0, 8),
+      currentNodeLabel: currentNode?.label,
+      nodes: nodes.map(n => ({
+        id: n.id.substring(0, 8),
+        label: n.label,
+        parentId: n.parentId?.substring(0, 8),
+        choicesCount: n.choices.length,
+        isEnd: n.isEnd
+      }))
+    });
+  }, [nodes, currentNode]);
+
   // Fonctions de zoom
   const zoomIn = () => setZoom(prev => Math.min(prev + 0.2, 2));
   const zoomOut = () => setZoom(prev => Math.max(prev - 0.2, 0.4));
@@ -204,28 +220,42 @@ export default function StoryTreeVisualization({
     const nodesToProcess = maxNodes ? nodes.slice(0, maxNodes) : nodes;
     const positions = new Map<string, { x: number; y: number }>();
 
+    console.log(`📐 [calculatePositions] Calcul des positions pour ${nodesToProcess.length} nœuds (max: ${maxNodes || 'tous'})`);
+
     // Nettoyer le cache si les nœuds ont changé
     if (levelCache.current.size > nodes.length) {
       levelCache.current.clear();
     }
 
     // Calculer la profondeur de chaque nœud depuis la racine
-    const getDepth = (nodeId: string): number => {
+    const getDepth = (nodeId: string, visited = new Set<string>()): number => {
       if (levelCache.current.has(nodeId)) {
         return levelCache.current.get(nodeId)!;
       }
+
+      // Détecter les cycles
+      if (visited.has(nodeId)) {
+        console.error(`🔴 Cycle détecté pour le nœud ${nodeId.substring(0, 8)}!`);
+        return 0;
+      }
+
+      visited.add(nodeId);
+
       const n = nodes.find((nd) => nd.id === nodeId);
       if (!n || !n.parentId) {
+        console.log(`🏁 Nœud racine ou sans parent: ${nodeId.substring(0, 8)}`);
         levelCache.current.set(nodeId, 0);
         return 0;
       }
-      const depth = getDepth(n.parentId) + 1;
+      const depth = getDepth(n.parentId, visited) + 1;
+      console.log(`📏 Nœud ${nodeId.substring(0, 8)} à profondeur ${depth} (parent: ${n.parentId.substring(0, 8)})`);
       levelCache.current.set(nodeId, depth);
       return depth;
     };
 
     // Calculer la profondeur maximale de l'arbre
     const maxDepth = Math.max(...nodesToProcess.map(n => getDepth(n.id)), 0);
+    console.log(`🌳 Profondeur maximale de l'arbre: ${maxDepth}`);
 
     // Espacement vertical adaptatif basé sur la profondeur
     const getVerticalSpacing = () => {
@@ -238,6 +268,7 @@ export default function StoryTreeVisualization({
     };
 
     const verticalSpacing = getVerticalSpacing();
+    console.log(`📊 Espacement vertical: ${verticalSpacing}${maxNodes ? '%' : 'px'}`);
 
     // Compter les nœuds à chaque niveau pour l'espacement horizontal
     const nodesPerLevel = new Map<number, StoryNode[]>();
@@ -249,6 +280,10 @@ export default function StoryTreeVisualization({
       nodesPerLevel.get(depth)!.push(node);
     });
 
+    console.log(`📊 Nœuds par niveau:`, Array.from(nodesPerLevel.entries()).map(([level, nodes]) =>
+      `Niveau ${level}: ${nodes.length} nœud(s)`
+    ));
+
     // Positionner les nœuds niveau par niveau
     const positionedNodes = new Set<string>();
 
@@ -258,10 +293,15 @@ export default function StoryTreeVisualization({
       }
 
       const node = nodesToProcess.find((n) => n.id === nodeId);
-      if (!node) return 50;
+      if (!node) {
+        console.warn(`⚠️ Nœud non trouvé: ${nodeId.substring(0, 8)}`);
+        return 50;
+      }
 
       const depth = getDepth(nodeId);
       const children = nodesToProcess.filter((n) => n.parentId === nodeId);
+
+      console.log(`📍 Positionnement du nœud ${nodeId.substring(0, 8)} (profondeur ${depth}, ${children.length} enfant(s))`);
 
       let x: number;
 
@@ -300,14 +340,21 @@ export default function StoryTreeVisualization({
       positions.set(nodeId, { x, y });
       positionedNodes.add(nodeId);
 
+      console.log(`✅ Nœud ${nodeId.substring(0, 8)} positionné à (${x.toFixed(1)}, ${y.toFixed(1)})`);
+
       return x;
     };
 
     // Trouver le nœud racine et commencer le positionnement
     const rootNode = nodesToProcess.find((n) => !n.parentId);
     if (rootNode) {
+      console.log(`🎯 Démarrage du positionnement depuis la racine: ${rootNode.id.substring(0, 8)}`);
       positionNode(rootNode.id, 50);
+    } else {
+      console.error(`🔴 Aucun nœud racine trouvé!`);
     }
+
+    console.log(`✅ ${positions.size} positions calculées`);
 
     return positions;
   };
@@ -370,6 +417,18 @@ export default function StoryTreeVisualization({
           <span className="text-[8px] text-white/40">Glisser</span>
         </div>
 
+        {/* Légende */}
+        <div className="mb-1.5 px-1 py-1 bg-black/20 rounded border border-white/10">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <div className="w-3 h-0.5 bg-cyan-400"></div>
+            <span className="text-[9px] text-cyan-300">Normal</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-0.5 border-t-2 border-dashed border-orange-400"></div>
+            <span className="text-[9px] text-orange-400">Retour</span>
+          </div>
+        </div>
+
         {/* Visualisation graphique scrollable avec drag */}
         <div 
           ref={miniContainerRef} 
@@ -388,11 +447,22 @@ export default function StoryTreeVisualization({
               {(() => {
                 const nodesToShow = nodes;
 
-                // Calculer la profondeur de chaque nœud
-                const getNodeDepth = (nodeId: string): number => {
+                // Calculer la profondeur de chaque nœud avec détection de cycle
+                const getNodeDepth = (nodeId: string, visited: Set<string> = new Set()): number => {
+                  // Détection de cycle
+                  if (visited.has(nodeId)) {
+                    console.warn(`Cycle détecté pour le nœud ${nodeId}`);
+                    return 0;
+                  }
+
                   const node = nodesToShow.find(n => n.id === nodeId);
                   if (!node || !node.parentId) return 0;
-                  return getNodeDepth(node.parentId) + 1;
+
+                  // Marquer comme visité
+                  const newVisited = new Set(visited);
+                  newVisited.add(nodeId);
+
+                  return getNodeDepth(node.parentId, newVisited) + 1;
                 };
 
                 // Trouver la profondeur max
@@ -413,25 +483,49 @@ export default function StoryTreeVisualization({
                 const positions = new Map<string, { x: number; y: number }>();
                 const subtreeWidths = new Map<string, number>(); // Largeur du sous-arbre de chaque nœud
 
-                // Calculer la largeur du sous-arbre pour chaque nœud (nombre de feuilles)
-                const getSubtreeWidth = (nodeId: string): number => {
+                // Calculer la largeur du sous-arbre pour chaque nœud (nombre de feuilles) avec détection de cycle
+                const getSubtreeWidth = (nodeId: string, visited: Set<string> = new Set()): number => {
                   if (subtreeWidths.has(nodeId)) return subtreeWidths.get(nodeId)!;
                   
+                  // Détection de cycle
+                  if (visited.has(nodeId)) {
+                    console.warn(`Cycle détecté dans getSubtreeWidth pour le nœud ${nodeId}`);
+                    subtreeWidths.set(nodeId, 1);
+                    return 1;
+                  }
+
                   const children = nodesToShow.filter(n => n.parentId === nodeId);
                   if (children.length === 0) {
                     subtreeWidths.set(nodeId, 1);
                     return 1;
                   }
                   
-                  const width = children.reduce((sum, child) => sum + getSubtreeWidth(child.id), 0);
+                  const newVisited = new Set(visited);
+                  newVisited.add(nodeId);
+
+                  const width = children.reduce((sum, child) => sum + getSubtreeWidth(child.id, newVisited), 0);
                   subtreeWidths.set(nodeId, width);
                   return width;
                 };
 
-                // Positionner récursivement depuis la racine
+                // Positionner récursivement depuis la racine avec détection de cycle
+                const positioningNodes = new Set<string>();
                 const positionSubtree = (nodeId: string, depth: number, leftX: number): number => {
                   const node = nodesToShow.find(n => n.id === nodeId);
                   if (!node) return leftX;
+
+                  // Détection de cycle - si déjà en cours de positionnement, ignorer
+                  if (positioningNodes.has(nodeId)) {
+                    console.warn(`Cycle détecté lors du positionnement du nœud ${nodeId}`);
+                    return leftX;
+                  }
+
+                  // Si déjà positionné, retourner
+                  if (positions.has(nodeId)) {
+                    return leftX + nodeSpacing;
+                  }
+
+                  positioningNodes.add(nodeId);
 
                   const children = nodesToShow.filter(n => n.parentId === nodeId);
                   const subtreeWidth = getSubtreeWidth(nodeId);
@@ -443,6 +537,7 @@ export default function StoryTreeVisualization({
                     // Nœud feuille : positionner au centre de son espace
                     const x = leftX + nodeSpacing / 2;
                     positions.set(nodeId, { x, y });
+                    positioningNodes.delete(nodeId);
                     return leftX + nodeSpacing;
                   }
 
@@ -453,12 +548,19 @@ export default function StoryTreeVisualization({
                   });
 
                   // Positionner le parent au centre de ses enfants
-                  const childPositions = children.map(c => positions.get(c.id)!);
-                  const minChildX = Math.min(...childPositions.map(p => p.x));
-                  const maxChildX = Math.max(...childPositions.map(p => p.x));
-                  const x = (minChildX + maxChildX) / 2;
-                  
-                  positions.set(nodeId, { x, y });
+                  const childPositions = children.map(c => positions.get(c.id)).filter(p => p !== undefined);
+                  if (childPositions.length > 0) {
+                    const minChildX = Math.min(...childPositions.map(p => p!.x));
+                    const maxChildX = Math.max(...childPositions.map(p => p!.x));
+                    const x = (minChildX + maxChildX) / 2;
+                    positions.set(nodeId, { x, y });
+                  } else {
+                    // Pas d'enfants positionnés, positionner au centre de l'espace
+                    const x = leftX + nodeSpacing / 2;
+                    positions.set(nodeId, { x, y });
+                  }
+
+                  positioningNodes.delete(nodeId);
                   return currentX;
                 };
 
@@ -584,6 +686,58 @@ export default function StoryTreeVisualization({
                                   />
                                 </g>
                               ))}
+                            </g>
+                          );
+                        });
+                      })}
+
+                      {/* Liens cycliques (retours) en pointillés orange */}
+                      {nodesToShow.map(node => {
+                        // Pour chaque choix du nœud, vérifier si c'est un lien cyclique
+                        return node.choices.map((choice, idx) => {
+                          if (!choice.nextNodeId) return null;
+
+                          // Vérifier si c'est un lien cyclique (cible n'est PAS un enfant direct)
+                          const isCyclicLink = nodesToShow.find(n => n.id === choice.nextNodeId)?.parentId !== node.id;
+
+                          if (!isCyclicLink) return null; // Pas un cycle, déjà rendu au-dessus
+
+                          const fromPos = positions.get(node.id);
+                          const toPos = positions.get(choice.nextNodeId);
+
+                          if (!fromPos || !toPos) return null;
+
+                          // Calculer une courbe qui part du côté droit du nœud source
+                          // et arrive sur le côté gauche ou haut du nœud cible
+                          const offsetX = 80; // Décalage horizontal pour éviter les autres liens
+                          const controlPointX1 = fromPos.x + offsetX;
+                          const controlPointY1 = fromPos.y;
+                          const controlPointX2 = toPos.x - offsetX;
+                          const controlPointY2 = toPos.y;
+
+                          return (
+                            <g key={`cycle-${node.id}-${choice.nextNodeId}-${idx}`}>
+                              {/* Courbe de Bézier cubique en pointillés */}
+                              <path
+                                d={`M ${fromPos.x + 60} ${fromPos.y} C ${controlPointX1} ${controlPointY1}, ${controlPointX2} ${controlPointY2}, ${toPos.x - 60} ${toPos.y}`}
+                                stroke="rgba(251, 146, 60, 0.4)"
+                                strokeWidth="4"
+                                strokeDasharray="8 6"
+                                fill="none"
+                              />
+                              <path
+                                d={`M ${fromPos.x + 60} ${fromPos.y} C ${controlPointX1} ${controlPointY1}, ${controlPointX2} ${controlPointY2}, ${toPos.x - 60} ${toPos.y}`}
+                                stroke="rgb(251, 146, 60)"
+                                strokeWidth="2"
+                                strokeDasharray="8 6"
+                                fill="none"
+                              />
+
+                              {/* Flèche à la fin */}
+                              <polygon
+                                points={`${toPos.x - 60},${toPos.y} ${toPos.x - 70},${toPos.y - 6} ${toPos.x - 70},${toPos.y + 6}`}
+                                fill="rgb(251, 146, 60)"
+                              />
                             </g>
                           );
                         });
@@ -778,11 +932,22 @@ export default function StoryTreeVisualization({
               {(() => {
                 const nodesToShow = nodes;
 
-                // Calculer la profondeur de chaque nœud
-                const getNodeDepth = (nodeId: string): number => {
+                // Calculer la profondeur de chaque nœud avec détection de cycle
+                const getNodeDepth = (nodeId: string, visited: Set<string> = new Set()): number => {
+                  // Détection de cycle
+                  if (visited.has(nodeId)) {
+                    console.warn(`Cycle détecté pour le nœud ${nodeId}`);
+                    return 0;
+                  }
+
                   const node = nodesToShow.find(n => n.id === nodeId);
                   if (!node || !node.parentId) return 0;
-                  return getNodeDepth(node.parentId) + 1;
+
+                  // Marquer comme visité
+                  const newVisited = new Set(visited);
+                  newVisited.add(nodeId);
+
+                  return getNodeDepth(node.parentId, newVisited) + 1;
                 };
 
                 // Trouver la profondeur max
@@ -800,21 +965,47 @@ export default function StoryTreeVisualization({
                 const positions = new Map<string, { x: number; y: number }>();
                 const subtreeWidths = new Map<string, number>();
 
-                const getSubtreeWidth = (nodeId: string): number => {
+                const getSubtreeWidth = (nodeId: string, visited: Set<string> = new Set()): number => {
                   if (subtreeWidths.has(nodeId)) return subtreeWidths.get(nodeId)!;
+
+                  // Détection de cycle
+                  if (visited.has(nodeId)) {
+                    console.warn(`Cycle détecté dans getSubtreeWidth pour le nœud ${nodeId}`);
+                    subtreeWidths.set(nodeId, 1);
+                    return 1;
+                  }
+
                   const children = nodesToShow.filter(n => n.parentId === nodeId);
                   if (children.length === 0) {
                     subtreeWidths.set(nodeId, 1);
                     return 1;
                   }
-                  const width = children.reduce((sum, child) => sum + getSubtreeWidth(child.id), 0);
+
+                  const newVisited = new Set(visited);
+                  newVisited.add(nodeId);
+
+                  const width = children.reduce((sum, child) => sum + getSubtreeWidth(child.id, newVisited), 0);
                   subtreeWidths.set(nodeId, width);
                   return width;
                 };
 
+                const positioningNodes = new Set<string>();
                 const positionSubtree = (nodeId: string, depth: number, leftX: number): number => {
                   const node = nodesToShow.find(n => n.id === nodeId);
                   if (!node) return leftX;
+
+                  // Détection de cycle - si déjà en cours de positionnement, ignorer
+                  if (positioningNodes.has(nodeId)) {
+                    console.warn(`Cycle détecté lors du positionnement du nœud ${nodeId}`);
+                    return leftX;
+                  }
+
+                  // Si déjà positionné, retourner
+                  if (positions.has(nodeId)) {
+                    return leftX + nodeSpacing;
+                  }
+
+                  positioningNodes.add(nodeId);
 
                   const children = nodesToShow.filter(n => n.parentId === nodeId);
                   const y = startY + depth * levelSpacing;
@@ -822,6 +1013,7 @@ export default function StoryTreeVisualization({
                   if (children.length === 0) {
                     const x = leftX + nodeSpacing / 2;
                     positions.set(nodeId, { x, y });
+                    positioningNodes.delete(nodeId);
                     return leftX + nodeSpacing;
                   }
 
@@ -830,12 +1022,18 @@ export default function StoryTreeVisualization({
                     currentX = positionSubtree(child.id, depth + 1, currentX);
                   });
 
-                  const childPositions = children.map(c => positions.get(c.id)!);
-                  const minChildX = Math.min(...childPositions.map(p => p.x));
-                  const maxChildX = Math.max(...childPositions.map(p => p.x));
-                  const x = (minChildX + maxChildX) / 2;
-                  
-                  positions.set(nodeId, { x, y });
+                  const childPositions = children.map(c => positions.get(c.id)).filter(p => p !== undefined);
+                  if (childPositions.length > 0) {
+                    const minChildX = Math.min(...childPositions.map(p => p!.x));
+                    const maxChildX = Math.max(...childPositions.map(p => p!.x));
+                    const x = (minChildX + maxChildX) / 2;
+                    positions.set(nodeId, { x, y });
+                  } else {
+                    const x = leftX + nodeSpacing / 2;
+                    positions.set(nodeId, { x, y });
+                  }
+
+                  positioningNodes.delete(nodeId);
                   return currentX;
                 };
 
@@ -873,6 +1071,7 @@ export default function StoryTreeVisualization({
                           className="absolute top-0 left-0 pointer-events-none"
                           style={{ width: `${containerWidth}px`, height: `${containerHeight}px` }}
                         >
+                          {/* Liens normaux (parent -> enfant) */}
                           {Array.from(nodesByLevel.entries()).map(([depth, nodesAtLevel]) => {
                             return nodesAtLevel.map(node => {
                               const children = nodesToShow.filter(n => n.parentId === node.id);
@@ -936,6 +1135,58 @@ export default function StoryTreeVisualization({
                                       />
                                     </g>
                                   ))}
+                                </g>
+                              );
+                            });
+                          })}
+
+                          {/* Liens cycliques (retours) en pointillés orange */}
+                          {nodesToShow.map(node => {
+                            // Pour chaque choix du nœud, vérifier si c'est un lien cyclique
+                            return node.choices.map((choice, idx) => {
+                              if (!choice.nextNodeId) return null;
+
+                              // Vérifier si c'est un lien cyclique (cible n'est PAS un enfant direct)
+                              const isCyclicLink = nodesToShow.find(n => n.id === choice.nextNodeId)?.parentId !== node.id;
+
+                              if (!isCyclicLink) return null; // Pas un cycle, déjà rendu au-dessus
+
+                              const fromPos = positions.get(node.id);
+                              const toPos = positions.get(choice.nextNodeId);
+
+                              if (!fromPos || !toPos) return null;
+
+                              // Calculer une courbe qui part du côté droit du nœud source
+                              // et arrive sur le côté gauche ou haut du nœud cible
+                              const offsetX = 80; // Décalage horizontal pour éviter les autres liens
+                              const controlPointX1 = fromPos.x + offsetX;
+                              const controlPointY1 = fromPos.y;
+                              const controlPointX2 = toPos.x - offsetX;
+                              const controlPointY2 = toPos.y;
+
+                              return (
+                                <g key={`cycle-${node.id}-${choice.nextNodeId}-${idx}`}>
+                                  {/* Courbe de Bézier cubique en pointillés */}
+                                  <path
+                                    d={`M ${fromPos.x + 60} ${fromPos.y} C ${controlPointX1} ${controlPointY1}, ${controlPointX2} ${controlPointY2}, ${toPos.x - 60} ${toPos.y}`}
+                                    stroke="rgba(251, 146, 60, 0.4)"
+                                    strokeWidth="4"
+                                    strokeDasharray="8 6"
+                                    fill="none"
+                                  />
+                                  <path
+                                    d={`M ${fromPos.x + 60} ${fromPos.y} C ${controlPointX1} ${controlPointY1}, ${controlPointX2} ${controlPointY2}, ${toPos.x - 60} ${toPos.y}`}
+                                    stroke="rgb(251, 146, 60)"
+                                    strokeWidth="2"
+                                    strokeDasharray="8 6"
+                                    fill="none"
+                                  />
+
+                                  {/* Flèche à la fin */}
+                                  <polygon
+                                    points={`${toPos.x - 60},${toPos.y} ${toPos.x - 70},${toPos.y - 6} ${toPos.x - 70},${toPos.y + 6}`}
+                                    fill="rgb(251, 146, 60)"
+                                  />
                                 </g>
                               );
                             });
@@ -1068,4 +1319,3 @@ export default function StoryTreeVisualization({
     </>
   );
 }
-
