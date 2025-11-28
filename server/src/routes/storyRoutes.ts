@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middlewares/authMiddleware';
+import { roleMiddleware } from '../middlewares/roleMiddleware';
 import { upload } from '../middlewares/uploadMiddleware';
 import {
     createStory,
@@ -20,7 +21,7 @@ const router = Router();
 
 router.post('/', authMiddleware, createStory);
 router.get('/my', authMiddleware, getMyStories); // Récupérer les histoires de l'utilisateur connecté
-router.get('/admin/all', authMiddleware, getAllStoriesAdmin); // Admin: toutes les histoires
+router.get('/admin/all', authMiddleware, roleMiddleware('admin'), getAllStoriesAdmin); // Admin: toutes les histoires
 router.get('/', getAllStories);
 router.get('/:storyId', getStoryById);
 router.get('/:storyId/pages', authMiddleware, getPagesByStoryId);
@@ -32,7 +33,7 @@ router.post('/:storyId/cover', authMiddleware, upload.single('coverImage'), uplo
 router.delete('/:storyId/cover', authMiddleware, deleteCoverImage);
 
 // Routes admin pour la censure
-router.post('/:storyId/censor', authMiddleware, censorStory);
-router.post('/:storyId/uncensor', authMiddleware, uncensorStory);
+router.post('/:storyId/censor', authMiddleware, roleMiddleware('admin'), censorStory);
+router.post('/:storyId/uncensor', authMiddleware, roleMiddleware('admin'), uncensorStory);
 
 export default router;

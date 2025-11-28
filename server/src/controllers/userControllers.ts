@@ -6,6 +6,7 @@ import { Story } from '../models/story';
 import { Page } from '../models/page';
 import { Party } from '../models/party';
 import { Rating } from '../models/rating';
+import { Report } from '../models/report';
 import type { AuthenticatedRequest } from '../middlewares/authMiddleware';
 import fs from 'fs';
 import path from 'path';
@@ -188,10 +189,96 @@ export async function updateUser(req: AuthenticatedRequest, res: Response, next:
 export async function deleteUser(req: Request, res: Response, next: NextFunction) {
   try {
     const { userId } = req.params;
-    const user = await User.findByIdAndDelete(userId);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    res.status(204).send();
+
+    console.log('🗑️ Début de la suppression de l\'utilisateur:', userId);
+
+    // Vérifier que l'utilisateur existe
+    const user = await User.findById(userId);
+    if (!user) {
+      console.log('❌ Utilisateur non trouvé');
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+
+    // 1. Supprimer la photo de profil du système de fichiers
+    if (user.profilePicture) {
+      const imagePath = path.join(__dirname, '../../uploads', user.profilePicture);
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+        console.log('✅ Photo de profil supprimée:', user.profilePicture);
+      }
+    }
+
+    // 2. Récupérer toutes les histoires de l'utilisateur
+    const userStories = await Story.find({ author: userId });
+    const storyIds = userStories.map(s => s._id);
+    console.log('📚 Histoires à supprimer:', storyIds.length);
+
+    // 3. Supprimer toutes les histoires (le hook cascade supprimera pages, choices, parties, ratings)
+    for (const story of userStories) {
+      // Supprimer l'image de couverture si elle existe
+      if (story.coverImage) {
+        const coverPath = path.join(__dirname, '../../uploads', story.coverImage);
+        if (fs.existsSync(coverPath)) {
+          fs.unlinkSync(coverPath);
+          console.log('✅ Image de couverture supprimée:', story.coverImage);
+        }
+      }
+
+      // Supprimer les illustrations des pages
+      const pages = await Page.find({ story_id: story._id });
+      for (const page of pages) {
+        if (page.illustration) {
+          const illustrationPath = path.join(__dirname, '../../uploads', page.illustration);
+          if (fs.existsSync(illustrationPath)) {
+            fs.unlinkSync(illustrationPath);
+            console.log('✅ Illustration supprimée:', page.illustration);
+          }
+        }
+      }
+
+      // Supprimer l'histoire (déclenche le hook cascade)
+      await Story.findByIdAndDelete(story._id);
+    }
+
+    // 4. Supprimer toutes les parties jouées par l'utilisateur (sur d'autres histoires)
+    const deletedParties = await Party.deleteMany({ user_id: userId });
+    console.log('✅ Parties supprimées:', deletedParties.deletedCount);
+
+    // 5. Supprimer tous les ratings donnés par l'utilisateur
+    const deletedRatings = await Rating.deleteMany({ user_id: userId });
+    console.log('✅ Ratings supprimés:', deletedRatings.deletedCount);
+
+    // 6. Supprimer tous les reports faits par l'utilisateur
+    const deletedReports = await Report.deleteMany({ user_id: userId });
+    console.log('✅ Reports supprimés:', deletedReports.deletedCount);
+
+    // 7. Supprimer les commentaires de l'utilisateur dans toutes les histoires
+    const allStories = await Story.find({ 'comments.user': userId });
+    for (const story of allStories) {
+      story.comments = story.comments.filter((comment: any) =>
+        comment.user.toString() !== userId.toString()
+      );
+      await story.save();
+    }
+    console.log('✅ Commentaires supprimés dans', allStories.length, 'histoires');
+
+    // 8. Enfin, supprimer l'utilisateur
+    await User.findByIdAndDelete(userId);
+    console.log('✅ Utilisateur supprimé:', user.username);
+
+    res.json({
+      message: 'Utilisateur et toutes ses données supprimés avec succès',
+      details: {
+        username: user.username,
+        storiesDeleted: storyIds.length,
+        partiesDeleted: deletedParties.deletedCount,
+        ratingsDeleted: deletedRatings.deletedCount,
+        reportsDeleted: deletedReports.deletedCount,
+        commentsDeleted: allStories.length
+      }
+    });
   } catch (err) {
+    console.error('❌ Erreur lors de la suppression de l\'utilisateur:', err);
     next(err);
   }
 }
