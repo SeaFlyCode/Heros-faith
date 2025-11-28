@@ -302,6 +302,46 @@ function WriteStoryPageContent() {
     });
   };
 
+  // Supprimer un choix
+  const handleDeleteChoice = async (choiceId: string) => {
+    if (!currentPage) return;
+
+    // Si c'est un choix temporaire, le supprimer directement
+    if (choiceId.startsWith('temp-')) {
+      setCurrentPage({
+        ...currentPage,
+        choices: currentPage.choices.filter(c => c._id !== choiceId)
+      });
+      return;
+    }
+
+    // Confirmer la suppression
+    if (!confirm("Êtes-vous sûr de vouloir supprimer ce choix ?")) {
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      await storyChoicesApi.delete(choiceId);
+      console.log("✅ Choix supprimé:", choiceId);
+
+      // Mettre à jour la page actuelle
+      const updatedPage = {
+        ...currentPage,
+        choices: currentPage.choices.filter(c => c._id !== choiceId)
+      };
+
+      setCurrentPage(updatedPage);
+      setPages(pages.map(p => p._id === currentPage._id ? updatedPage : p));
+    } catch (err) {
+      const apiError = err as ApiError;
+      console.error("❌ Erreur lors de la suppression du choix:", apiError);
+      setError(apiError.message || "Erreur lors de la suppression du choix");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleChoiceBlur = async (choiceId: string) => {
     if (!currentPage) return;
 
@@ -547,6 +587,61 @@ function WriteStoryPageContent() {
       console.error("❌ Erreur:", apiError);
       setError("Erreur lors de la sauvegarde");
     } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Supprimer une page
+  const handleDeletePage = async () => {
+    if (!currentPage) return;
+
+    // Vérifier qu'on ne supprime pas la seule page restante
+    if (pages.length === 1) {
+      setError("Vous ne pouvez pas supprimer la seule page de l'histoire");
+      return;
+    }
+
+    // Vérifier si la page est la page racine (première page)
+    const isRootPage = pages[0]._id === currentPage._id;
+    if (isRootPage) {
+      if (!confirm("⚠️ Attention : Vous êtes sur le point de supprimer la page de début de votre histoire. Cela peut affecter la structure de votre histoire. Voulez-vous continuer ?")) {
+        return;
+      }
+    } else {
+      if (!confirm("Êtes-vous sûr de vouloir supprimer cette page ? Tous les choix qui pointent vers cette page seront également supprimés.")) {
+        return;
+      }
+    }
+
+    try {
+      setIsSaving(true);
+
+      // Supprimer la page
+      await storyPagesApi.delete(currentPage._id);
+      console.log("✅ Page supprimée:", currentPage._id);
+
+      // Supprimer tous les choix qui pointent vers cette page
+      for (const page of pages) {
+        for (const choice of page.choices) {
+          if (choice.target_page_id === currentPage._id) {
+            try {
+              await storyChoicesApi.update(choice._id, {
+                target_page_id: "",
+              });
+              console.log("✅ Lien supprimé du choix:", choice._id);
+            } catch (err) {
+              console.error("❌ Erreur lors de la suppression du lien:", err);
+            }
+          }
+        }
+      }
+
+      // Recharger toutes les pages
+      await loadStoryAndPages();
+    } catch (err) {
+      const apiError = err as ApiError;
+      console.error("❌ Erreur lors de la suppression de la page:", apiError);
+      setError(apiError.message || "Erreur lors de la suppression de la page");
       setIsSaving(false);
     }
   };
@@ -1122,12 +1217,25 @@ function WriteStoryPageContent() {
                               key={choice._id}
                               className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-4"
                             >
-                              <h4 className="text-white font-semibold mb-3">
-                                Choix {index + 1}
-                                {choice._id.startsWith('temp-') && (
-                                  <span className="ml-2 text-xs text-orange-400">(non sauvegardé)</span>
-                                )}
-                              </h4>
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="text-white font-semibold">
+                                  Choix {index + 1}
+                                  {choice._id.startsWith('temp-') && (
+                                    <span className="ml-2 text-xs text-orange-400">(non sauvegardé)</span>
+                                  )}
+                                </h4>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteChoice(choice._id)}
+                                  disabled={isSaving}
+                                  className="p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg border border-red-400/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Supprimer ce choix"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
                               <input
                                 type="text"
                                 value={choice.text}
@@ -1196,6 +1304,20 @@ function WriteStoryPageContent() {
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
                       <span>C&apos;est une fin - Cliquez pour continuer l&apos;histoire</span>
+                    </button>
+                  )}
+                  {pages.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={handleDeletePage}
+                      disabled={isSaving}
+                      className="px-4 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-300 font-semibold rounded-2xl border border-red-400/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+                      title="Supprimer cette page"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Supprimer la page
                     </button>
                   )}
                 </div>

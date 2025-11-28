@@ -319,27 +319,18 @@ export default function ReadStoryPage() {
   const loadStoryData = async () => {
     try {
       setIsLoading(true);
-      console.log("📖 Chargement de l'histoire:", storyId);
 
       // Charger l'histoire
       const storyData = await storiesApi.getById(storyId);
       setStory(storyData);
-      console.log("✅ Histoire chargée:", storyData.title);
 
       // Vérifier si l'utilisateur est l'auteur
       const authorId = typeof storyData.author === 'object' ? storyData.author._id : storyData.author;
       const isAuthor = user && authorId === user._id;
-      console.log("👤 Utilisateur auteur:", isAuthor);
 
       // Charger toutes les pages de l'histoire
       const pagesData = await storyPagesApi.getByStoryId(storyId);
       setPages(pagesData);
-      console.log("✅ Pages chargées:", pagesData.length);
-      console.log("📄 Liste des pages:", pagesData.map(p => ({
-        id: p._id,
-        content_preview: p.content.substring(0, 50) + '...',
-        is_ending: p.is_ending
-      })));
 
       // Créer ou récupérer une partie pour cette histoire
       let currentParty: any = null;
@@ -350,14 +341,17 @@ export default function ReadStoryPage() {
           // Chercher toutes les parties de l'utilisateur pour cette histoire
           const userParties = await partiesApi.getByUserId(user._id);
           
+          // Filtrer les parties valides (avec story_id non null)
+          const validParties = userParties.filter((p: any) => p.story_id != null);
+
           // Chercher une partie non terminée
-          const existingParty = userParties.find((p: any) => {
+          const existingParty = validParties.find((p: any) => {
             const partyStoryId = typeof p.story_id === 'object' ? p.story_id._id : p.story_id;
             return partyStoryId === storyId && !p.end_date;
           });
 
           // Chercher une partie terminée (la plus récente)
-          const completedParties = userParties.filter((p: any) => {
+          const completedParties = validParties.filter((p: any) => {
             const partyStoryId = typeof p.story_id === 'object' ? p.story_id._id : p.story_id;
             return partyStoryId === storyId && p.end_date;
           }).sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime());
@@ -370,12 +364,10 @@ export default function ReadStoryPage() {
           if (existingParty) {
             setPartyId(existingParty._id);
             currentParty = existingParty;
-            console.log("📚 Partie en cours trouvée, progression:", existingParty.path.length, "pages visitées");
 
             // Si l'utilisateur est l'auteur ET qu'il a une progression
             // On réinitialise automatiquement car c'est probablement de l'écriture
             if (isAuthor && existingParty.path.length > 0) {
-              console.log("👤 Vous êtes l'auteur - réinitialisation automatique de la progression");
               await partiesApi.update(existingParty._id, {
                 path: [],
                 end_date: undefined,
@@ -384,7 +376,6 @@ export default function ReadStoryPage() {
             }
           } else if (completedParty && !isAuthor) {
             // L'utilisateur a terminé cette histoire - lui proposer de recommencer
-            console.log("🏁 L'utilisateur a déjà terminé cette histoire");
             setCompletedPartyData({ party: completedParty, pagesData });
             setShowCompletedModal(true);
             setIsLoading(false);
@@ -397,7 +388,6 @@ export default function ReadStoryPage() {
             });
             setPartyId(newParty._id);
             currentParty = newParty;
-            console.log("🆕 Nouvelle partie créée");
           }
         } catch (err) {
           console.error("Erreur lors de la gestion de la partie:", err);
@@ -406,8 +396,8 @@ export default function ReadStoryPage() {
 
       // Trouver la première page ou reprendre la dernière page visitée
       if (pagesData.length > 0) {
-        let shouldResume = false;
-        let canResume = false;
+        console.log("📄 Pages disponibles:", pagesData.length);
+        console.log("📚 Partie actuelle:", currentParty ? `ID: ${currentParty._id}, Path: ${currentParty.path?.length || 0} pages` : "Aucune");
 
         // Si la partie a un historique, vérifier s'il est valide pour une reprise
         if (currentParty && currentParty.path && currentParty.path.length > 0) {
@@ -428,21 +418,12 @@ export default function ReadStoryPage() {
             const isFirstPage = (await findFirstPage(pagesData))?._id === lastPageIdStr;
 
             if (lastPage.is_ending || lastPageChoices.length > 0 || isFirstPage) {
-              canResume = true;
-              console.log("✅ Progression valide détectée (page", currentParty.path.length, ")");
-              console.log("   - Page de fin:", lastPage.is_ending);
-              console.log("   - Nombre de choix:", lastPageChoices.length);
-              console.log("   - Première page:", isFirstPage);
-
               // Afficher la modal pour demander à l'utilisateur
               setResumeData({ party: currentParty, pagesData });
               setShowResumeModal(true);
               setIsLoading(false);
               return; // Arrêter ici, l'utilisateur choisira
             } else {
-              console.log("⚠️ Historique invalide détecté (page sans choix, probablement créée en mode écriture)");
-              console.log("   - Réinitialisation automatique de la progression...");
-
               // Réinitialiser la progression dans la base de données
               if (partyIdRef.current) {
                 await partiesApi.update(partyIdRef.current, {
@@ -453,27 +434,13 @@ export default function ReadStoryPage() {
           }
         }
 
-        if (shouldResume && currentParty) {
-          const lastPageId = currentParty.path[currentParty.path.length - 1];
-          const lastPageIdStr = typeof lastPageId === 'object' ? lastPageId.toString() : lastPageId;
-
-          console.log("🔄 Reprise de la lecture à la dernière page visitée:", lastPageIdStr);
-
-          // Restaurer l'historique complet
-          setPageHistory(currentParty.path.map((id: any) =>
-            typeof id === 'object' ? id.toString() : id
-          ));
-
-          await navigateToPage(lastPageIdStr, pagesData);
+        // Si on arrive ici, c'est qu'on n'a pas de progression valide à reprendre
+        // Commencer au début
+        const firstPage = await findFirstPage(pagesData);
+        if (firstPage) {
+          await navigateToPage(firstPage._id, pagesData);
         } else {
-          // Commencer au début
-          console.log("🆕 Démarrage d'une nouvelle lecture depuis le début");
-          const firstPage = await findFirstPage(pagesData);
-          if (firstPage) {
-            await navigateToPage(firstPage._id, pagesData);
-          } else {
-            setError("Aucune page de départ trouvée pour cette histoire");
-          }
+          setError("Aucune page de départ trouvée pour cette histoire");
         }
       } else {
         setError("Cette histoire n'a pas encore de pages");
@@ -494,17 +461,12 @@ export default function ReadStoryPage() {
     if (pagesData.length === 0) return null;
 
     try {
-      console.log(`🔍 Recherche de la page racine parmi ${pagesData.length} pages...`);
-
       // Charger tous les choix pour toutes les pages
       const allChoicesPromises = pagesData.map(page =>
         storyChoicesApi.getByPageId(page._id).catch(() => [])
       );
       const allChoicesArrays = await Promise.all(allChoicesPromises);
       const allChoices = allChoicesArrays.flat();
-
-      console.log(`📋 Total de choix dans l'histoire: ${allChoices.length}`);
-      console.log(`📋 Détails de tous les choix:`, allChoices);
 
       // Trouver les IDs de toutes les pages ciblées
       const targetedPageIds = new Set(
@@ -513,44 +475,31 @@ export default function ReadStoryPage() {
           .filter(id => id) // Filtrer les undefined/null
       );
 
-      console.log(`🎯 Pages ciblées par des choix:`, Array.from(targetedPageIds));
-      console.log(`📄 IDs de toutes les pages:`, pagesData.map(p => p._id));
-
       // Trouver toutes les pages qui ne sont ciblées par aucun choix
       const rootPages = pagesData.filter(page => !targetedPageIds.has(page._id));
 
-      console.log(`🔍 Pages racines candidates: ${rootPages.length}`);
-      rootPages.forEach(p => console.log(`   - ${p._id}`));
-
       if (rootPages.length === 0) {
-        console.warn("⚠️ Aucune page racine trouvée, utilisation de la première page");
         return pagesData[0];
       }
 
       if (rootPages.length === 1) {
-        console.log(`🏁 Page racine unique trouvée: ${rootPages[0]._id}`);
         return rootPages[0];
       }
 
       // S'il y a plusieurs pages racines (problème de structure),
       // prendre celle qui a des choix en priorité
-      console.warn(`⚠️ Plusieurs pages racines trouvées (${rootPages.length}), recherche de celle avec des choix...`);
-
       for (const page of rootPages) {
         const pageChoices = await storyChoicesApi.getByPageId(page._id).catch(() => []);
-        console.log(`   - ${page._id}: ${pageChoices.length} choix`);
 
         if (pageChoices.length > 0) {
-          console.log(`✅ Page racine avec choix sélectionnée: ${page._id}`);
           return page;
         }
       }
 
       // Si aucune page racine n'a de choix, prendre la première
-      console.warn("⚠️ Aucune page racine avec choix, utilisation de la première page racine");
       return rootPages[0];
     } catch (err) {
-      console.error("❌ Erreur lors de la recherche de la première page:", err);
+      console.error("Erreur lors de la recherche de la première page:", err);
       return pagesData[0];
     }
   };
@@ -564,18 +513,16 @@ export default function ReadStoryPage() {
       const page = allPages.find(p => p._id === pageId);
       
       if (!page) {
-        console.error("❌ Page non trouvée:", pageId);
+        console.error("Page non trouvée:", pageId);
         return;
       }
 
-      console.log("📄 Navigation vers la page:", pageId);
       setCurrentPage(page);
 
       // Ajouter à l'historique seulement si ce n'est pas déjà la dernière page
       setPageHistory(prev => {
         // Si c'est déjà la dernière page de l'historique, ne pas l'ajouter à nouveau
         if (prev.length > 0 && prev[prev.length - 1] === pageId) {
-          console.log("⏭️ Page déjà dans l'historique, pas de duplication");
           return prev;
         }
 
@@ -586,9 +533,8 @@ export default function ReadStoryPage() {
           partiesApi.update(partyIdRef.current, {
             path: newHistory,
           }).catch(err => {
-            console.error("❌ Erreur lors de la mise à jour de la progression:", err);
+            console.error("Erreur lors de la mise à jour de la progression:", err);
           });
-          console.log("💾 Progression enregistrée: page", newHistory.length);
         }
 
         return newHistory;
@@ -596,16 +542,7 @@ export default function ReadStoryPage() {
 
       // Charger les choix de cette page
       if (!page.is_ending) {
-        console.log(`🔍 Récupération des choix pour la page ${pageId}...`);
         const pageChoices = await storyChoicesApi.getByPageId(pageId);
-        console.log(`📋 Choix chargés pour la page ${pageId}:`, pageChoices.length);
-        console.log(`📋 Détails des choix:`, pageChoices);
-
-        // Vérifier si les choix ont des target_page_id
-        pageChoices.forEach((choice, index) => {
-          console.log(`  Choix ${index + 1}: "${choice.text}" -> target_page_id: ${choice.target_page_id || 'AUCUN'}`);
-        });
-
         setChoices(pageChoices);
       } else {
         setChoices([]);
@@ -621,7 +558,7 @@ export default function ReadStoryPage() {
       }, 300);
 
     } catch (err) {
-      console.error("❌ Erreur lors de la navigation:", err);
+      console.error("Erreur lors de la navigation:", err);
       setIsTransitioning(false);
     }
   }, [pages, hasCompletedEnding]);
@@ -655,7 +592,6 @@ export default function ReadStoryPage() {
           story_id: storyId,
           rating: rating,
         });
-        console.log("✅ Note enregistrée:", rating);
       }
     } catch (err) {
       console.error("Erreur lors de l'enregistrement de la note:", err);
@@ -666,11 +602,10 @@ export default function ReadStoryPage() {
 
   // Gérer le choix d'une option
   const handleChoice = (choice: StoryChoice) => {
-    console.log("🎯 Choix sélectionné:", choice.text);
     if (choice.target_page_id) {
       navigateToPage(choice.target_page_id);
     } else {
-      console.error("❌ Ce choix n'a pas de page cible");
+      console.error("Ce choix n'a pas de page cible");
       setError("Ce choix n'est pas encore développé");
     }
   };
@@ -690,7 +625,7 @@ export default function ReadStoryPage() {
         partiesApi.update(partyIdRef.current, {
           path: newHistory,
         }).catch(err => {
-          console.error("❌ Erreur lors de la mise à jour de la progression:", err);
+          console.error("Erreur lors de la mise à jour de la progression:", err);
         });
       }
 

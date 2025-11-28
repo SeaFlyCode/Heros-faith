@@ -179,14 +179,11 @@ export default function ReadPage() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      console.log("📚 Chargement des histoires...");
 
       // 1. Charger uniquement les histoires publiées
       const allStories = await storiesApi.getAll();
       const publishedStories = allStories.filter(story => story.status === 'published');
 
-      console.log("✅ Histoires publiées:", publishedStories.length);
-      console.log("📊 Total histoires:", allStories.length, "dont", allStories.length - publishedStories.length, "brouillons");
 
       // 2. Enrichir les histoires avec les ratings
       const enrichedStories = await Promise.all(
@@ -212,7 +209,9 @@ export default function ReadPage() {
       // 3. Charger les parties de l'utilisateur pour la progression
       let userParties: any[] = [];
       try {
-        userParties = await partiesApi.getByUserId(user!._id);
+        const allParties = await partiesApi.getByUserId(user!._id);
+        // Filtrer les parties valides (avec story_id non null)
+        userParties = allParties.filter((p: any) => p.story_id != null);
         console.log("✅ Parties de l'utilisateur:", userParties.length);
       } catch (err) {
         console.log("Aucune partie trouvée");
@@ -223,6 +222,7 @@ export default function ReadPage() {
       const storiesInProgressMap = new Map<string, EnrichedStory>();
 
       for (const party of userParties) {
+        // À ce stade, story_id ne peut pas être null grâce au filtre ci-dessus
         const storyId = typeof party.story_id === 'object'
           ? (party.story_id as any)._id
           : party.story_id;

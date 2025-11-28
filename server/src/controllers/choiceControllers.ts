@@ -1,6 +1,14 @@
 import type { Request, Response, NextFunction } from 'express';
+import type { JwtPayload } from 'jsonwebtoken';
 import { Types } from 'mongoose';
 import { Choice } from '../models/choice';
+import { Page } from '../models/page';
+import { Story } from '../models/story';
+
+// Extension de l'interface Request pour inclure user
+export interface AuthenticatedRequest extends Request {
+  user?: string | JwtPayload;
+}
 
 export async function createChoice(req: Request, res: Response, next: NextFunction) {
   try {
@@ -60,11 +68,35 @@ export async function updateChoice(req: Request, res: Response, next: NextFuncti
   }
 }
 
-export async function deleteChoice(req: Request, res: Response, next: NextFunction) {
+export async function deleteChoice(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const { choiceId } = req.params;
-    const choice = await Choice.findByIdAndDelete(choiceId);
+    const userId = (req.user as JwtPayload)?.userId;
+    const userRole = (req.user as JwtPayload)?.role;
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    // Trouver le choix
+    const choice = await Choice.findById(choiceId);
     if (!choice) return res.status(404).json({ message: 'Choice not found' });
+
+    // Trouver la page associée
+    const page = await Page.findById(choice.page_id);
+    if (!page) return res.status(404).json({ message: 'Page not found' });
+
+    // Vérifier que l'utilisateur est le propriétaire de l'histoire
+    const story = await Story.findById(page.story_id);
+    if (!story) return res.status(404).json({ message: 'Story not found' });
+
+    // Permettre la suppression si l'utilisateur est l'auteur OU un admin
+    if (story.author.toString() !== userId && userRole !== 'admin') {
+      return res.status(403).json({ message: 'Access denied: you can only delete choices from your own stories' });
+    }
+
+    // Supprimer le choix
+    await Choice.findByIdAndDelete(choiceId);
     res.status(204).send();
   } catch (err) {
     next(err);
