@@ -55,15 +55,6 @@ export default function NavBar() {
                     >
                         Comment ça marche ?
                     </Link>
-                    {/* Lien Admin - visible uniquement pour les admins */}
-                    {isAuthenticated && user?.role === 'admin' && (
-                        <Link
-                            href="/admin"
-                            className="inline-block font-medium font-montserrat no-underline hover:text-red-400 transition-colors text-red-300 drop-shadow"
-                        >
-                            Admin
-                        </Link>
-                    )}
                 </div>
                 {/* Boutons CTA Desktop */}
                 <div className="flex items-center gap-x-4 ml-8">

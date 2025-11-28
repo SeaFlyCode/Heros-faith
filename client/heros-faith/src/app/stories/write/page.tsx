@@ -41,6 +41,16 @@ function WriteStoryPageContent() {
   const [linkingChoiceId, setLinkingChoiceId] = useState<string | null>(null);
   const [linkSearchQuery, setLinkSearchQuery] = useState("");
 
+  // États pour le modal de modification de l'histoire
+  const [showEditStoryModal, setShowEditStoryModal] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editCoverImage, setEditCoverImage] = useState<File | null>(null);
+  const [editCoverImagePreview, setEditCoverImagePreview] = useState<string | null>(null);
+  const [currentCoverImage, setCurrentCoverImage] = useState<string | null>(null);
+  const [isUpdatingStory, setIsUpdatingStory] = useState(false);
+  const [storyDescription, setStoryDescription] = useState("");
+
   // Fonction pour trier les pages dans l'ordre de l'arbre (racine en premier)
   const sortPagesTree = (pages: PageWithChoices[]): PageWithChoices[] => {
     if (pages.length === 0) return pages;
@@ -178,6 +188,8 @@ function WriteStoryPageContent() {
       const story = await storiesApi.getById(storyId!);
       setStoryTitle(story.title);
       setStoryStatus(story.status);
+      setStoryDescription(story.description || "");
+      setCurrentCoverImage(story.coverImage || null);
 
       // Charger toutes les pages de cette histoire
       const allPages = await storyPagesApi.getByStoryId(storyId!);
@@ -809,6 +821,92 @@ function WriteStoryPageContent() {
     }
   };
 
+  // Ouvrir le modal de modification de l'histoire
+  const openEditStoryModal = () => {
+    setEditTitle(storyTitle);
+    setEditDescription(storyDescription);
+    setEditCoverImage(null);
+    setEditCoverImagePreview(null);
+    setShowEditStoryModal(true);
+  };
+
+  // Gérer le changement d'image
+  const handleEditImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setError("L'image ne doit pas dépasser 5MB");
+        return;
+      }
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        setError("Format d'image non supporté. Utilisez JPEG, PNG, GIF ou WebP.");
+        return;
+      }
+      setEditCoverImage(file);
+      setEditCoverImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  // Sauvegarder les modifications de l'histoire
+  const handleSaveStoryChanges = async () => {
+    if (!storyId) return;
+    if (!editTitle.trim()) {
+      setError("Le titre est requis");
+      return;
+    }
+
+    try {
+      setIsUpdatingStory(true);
+      setError("");
+
+      // Mettre à jour le titre et la description
+      await storiesApi.update(storyId, {
+        title: editTitle.trim(),
+        description: editDescription.trim(),
+      });
+
+      // Upload de la nouvelle image si présente
+      if (editCoverImage) {
+        const result = await storiesApi.uploadCoverImage(storyId, editCoverImage);
+        setCurrentCoverImage(result.coverImage);
+      }
+
+      // Mettre à jour les états locaux
+      setStoryTitle(editTitle.trim());
+      setStoryDescription(editDescription.trim());
+      setShowEditStoryModal(false);
+
+      console.log("✅ Histoire mise à jour avec succès");
+    } catch (err) {
+      const apiError = err as ApiError;
+      console.error("❌ Erreur lors de la mise à jour:", apiError);
+      setError(apiError.message || "Erreur lors de la mise à jour de l'histoire");
+    } finally {
+      setIsUpdatingStory(false);
+    }
+  };
+
+  // Supprimer l'image de couverture
+  const handleDeleteCoverImage = async () => {
+    if (!storyId || !currentCoverImage) return;
+
+    try {
+      setIsUpdatingStory(true);
+      await storiesApi.deleteCoverImage(storyId);
+      setCurrentCoverImage(null);
+      setEditCoverImagePreview(null);
+      setEditCoverImage(null);
+      console.log("✅ Image de couverture supprimée");
+    } catch (err) {
+      const apiError = err as ApiError;
+      console.error("❌ Erreur lors de la suppression de l'image:", apiError);
+      setError(apiError.message || "Erreur lors de la suppression de l'image");
+    } finally {
+      setIsUpdatingStory(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-black">
@@ -874,10 +972,21 @@ function WriteStoryPageContent() {
       {/* Contenu principal */}
       <main className="relative z-10 min-h-screen pt-32 pb-16 px-8">
         <div className="max-w-4xl mx-auto">
-          {/* Titre */}
-          <h1 className="text-3xl sm:text-4xl font-bold text-white text-center mb-2 font-montserrat tracking-tight">
-            {storyTitle}
-          </h1>
+          {/* Titre avec bouton de modification */}
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <h1 className="text-3xl sm:text-4xl font-bold text-white text-center font-montserrat tracking-tight">
+              {storyTitle}
+            </h1>
+            <button
+              onClick={openEditStoryModal}
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all border border-white/20 hover:border-white/30"
+              title="Modifier les informations de l'histoire"
+            >
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+          </div>
 
           {/* Nom du nœud actuel */}
           {currentPage && (
@@ -1253,6 +1362,131 @@ function WriteStoryPageContent() {
             >
               Annuler
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de modification de l'histoire */}
+      {showEditStoryModal && (
+        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white/10 backdrop-blur-xl rounded-3xl border border-cyan-500/50 p-8 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-full bg-cyan-500/20 flex items-center justify-center">
+                <svg className="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </div>
+              <h2 className="text-white text-2xl font-bold">Modifier l&apos;histoire</h2>
+            </div>
+
+            {/* Titre */}
+            <div className="mb-4">
+              <label className="text-white font-semibold text-sm mb-2 block">Titre</label>
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="Titre de l'histoire"
+                className="w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/50 transition-all"
+              />
+            </div>
+
+            {/* Description */}
+            <div className="mb-4">
+              <label className="text-white font-semibold text-sm mb-2 block">Description</label>
+              <textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Description de l'histoire..."
+                rows={4}
+                className="w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/50 transition-all resize-none"
+              />
+            </div>
+
+            {/* Image de couverture */}
+            <div className="mb-6">
+              <label className="text-white font-semibold text-sm mb-2 block">Image de couverture</label>
+              
+              {/* Affichage de l'image actuelle ou nouvelle */}
+              {(editCoverImagePreview || currentCoverImage) && (
+                <div className="relative mb-3 rounded-xl overflow-hidden">
+                  <img
+                    src={editCoverImagePreview || `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000'}${currentCoverImage}`}
+                    alt="Couverture"
+                    className="w-full h-40 object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (editCoverImagePreview) {
+                        setEditCoverImage(null);
+                        setEditCoverImagePreview(null);
+                      } else {
+                        handleDeleteCoverImage();
+                      }
+                    }}
+                    disabled={isUpdatingStory}
+                    className="absolute top-2 right-2 p-2 bg-red-500/80 hover:bg-red-500 rounded-full transition-all"
+                  >
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+
+              {/* Bouton pour choisir une image */}
+              <label className="block cursor-pointer">
+                <div className="flex items-center justify-center gap-2 px-4 py-3 bg-white/5 hover:bg-white/10 border border-dashed border-white/30 rounded-xl transition-all">
+                  <svg className="w-5 h-5 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-white/70 text-sm">
+                    {currentCoverImage || editCoverImagePreview ? "Changer l'image" : "Ajouter une image"}
+                  </span>
+                </div>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                  onChange={handleEditImageChange}
+                  className="hidden"
+                />
+              </label>
+              <p className="text-white/40 text-xs mt-2">JPEG, PNG, GIF ou WebP. Max 5MB.</p>
+            </div>
+
+            {/* Boutons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowEditStoryModal(false)}
+                disabled={isUpdatingStory}
+                className="flex-1 px-4 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl border border-white/20 transition-all disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleSaveStoryChanges}
+                disabled={isUpdatingStory || !editTitle.trim()}
+                className="flex-1 px-4 py-3 bg-cyan-500/30 hover:bg-cyan-500/40 text-cyan-200 font-semibold rounded-xl border border-cyan-400/50 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isUpdatingStory ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Enregistrement...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Enregistrer
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
