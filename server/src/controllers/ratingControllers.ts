@@ -4,11 +4,34 @@ import { Rating } from '../models/rating';
 
 export async function createRating(req: Request, res: Response, next: NextFunction) {
   try {
+    console.log("📝 [RATING] Création d'un nouveau rating:", req.body);
+    
+    // Vérifier si l'utilisateur a déjà noté cette histoire
+    const existingRating = await Rating.findOne({
+      user_id: req.body.user_id,
+      story_id: req.body.story_id
+    });
+    
+    if (existingRating) {
+      // Mettre à jour le rating existant au lieu d'en créer un nouveau
+      existingRating.rating = req.body.rating;
+      if (req.body.comment) existingRating.comment = req.body.comment;
+      await existingRating.save();
+      console.log("✅ [RATING] Rating mis à jour:", existingRating);
+      return res.status(200).json(existingRating);
+    }
+    
     const rating = new Rating(req.body);
     await rating.save();
+    console.log("✅ [RATING] Rating enregistré avec succès:", rating);
     res.status(201).json(rating);
-  } catch (err) {
-    next(err);
+  } catch (err: any) {
+    console.error("❌ [RATING] Erreur lors de la création du rating:", err);
+    // Renvoyer une erreur plus descriptive
+    res.status(400).json({ 
+      message: err.message || 'Erreur lors de la création du rating',
+      details: err.errors || {}
+    });
   }
 }
 
@@ -47,7 +70,9 @@ export async function getRatingsByStoryId(req: Request, res: Response, next: Nex
 export async function getStoryAverageRating(req: Request, res: Response, next: NextFunction) {
   try {
     const { storyId } = req.params;
+    console.log("📊 [RATING] Récupération de la moyenne des ratings pour l'histoire:", storyId);
     const ratings = await Rating.find({ story_id: new Types.ObjectId(storyId) });
+    console.log("📊 [RATING] Nombre de ratings trouvés:", ratings.length);
 
     if (ratings.length === 0) {
       return res.json({
@@ -60,12 +85,16 @@ export async function getStoryAverageRating(req: Request, res: Response, next: N
     const totalRating = ratings.reduce((sum, rating) => sum + rating.rating, 0);
     const averageRating = totalRating / ratings.length;
 
-    res.json({
+    const result = {
       storyId,
       averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
       totalRatings: ratings.length
-    });
+    };
+    console.log("✅ [RATING] Résultat:", result);
+
+    res.json(result);
   } catch (err) {
+    console.error("❌ [RATING] Erreur lors de la récupération de la moyenne:", err);
     next(err);
   }
 }

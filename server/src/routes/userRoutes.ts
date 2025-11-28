@@ -18,7 +18,7 @@ const router = Router();
 
 router.post('/login', login);
 router.post('/', createUser);
-router.get('/', roleMiddleware('admin'), getAllUsers);
+router.get('/', authMiddleware, roleMiddleware('admin'), getAllUsers);
 router.get('/:userId/stats', authMiddleware, getUserStats);
 router.get('/:userId', authMiddleware, getUserById);
 // Route pour qu'un utilisateur puisse modifier son propre profil

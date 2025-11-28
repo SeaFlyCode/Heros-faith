@@ -9,6 +9,7 @@ import {
   storyChoicesApi,
   partiesApi,
   ratingsApi,
+  reportsApi,
   getAuthorDisplayName,
   type Story, 
   type StoryPage,
@@ -16,6 +17,119 @@ import {
   type ApiError
 } from "@/api";
 import { useAuth } from "@/hooks/useAuth";
+
+// Modal de signalement
+const ReportModal = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  storyTitle,
+  isSubmitting,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (reason: string) => void;
+  storyTitle: string;
+  isSubmitting: boolean;
+}) => {
+  const [reason, setReason] = useState("");
+  const [selectedReason, setSelectedReason] = useState("");
+
+  const predefinedReasons = [
+    "Contenu inapproprié ou offensant",
+    "Contenu violent ou choquant",
+    "Contenu à caractère sexuel",
+    "Discours haineux ou discrimination",
+    "Plagiat ou vol de contenu",
+    "Autre",
+  ];
+
+  if (!isOpen) return null;
+
+  const handleSubmit = () => {
+    const finalReason = selectedReason === "Autre" ? reason : selectedReason;
+    if (finalReason.trim()) {
+      onSubmit(finalReason);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      
+      {/* Modal */}
+      <div className="relative bg-gradient-to-br from-gray-900 to-black border border-orange-500/30 rounded-3xl p-8 max-w-md w-full shadow-2xl">
+        {/* Icône */}
+        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center">
+          <svg className="w-8 h-8 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+
+        {/* Titre */}
+        <h2 className="text-2xl font-bold text-white text-center mb-2">
+          Signaler cette histoire
+        </h2>
+        <p className="text-white/60 text-center mb-6">
+          <span className="text-white font-medium">"{storyTitle}"</span>
+        </p>
+
+        {/* Raisons prédéfinies */}
+        <div className="space-y-2 mb-4">
+          {predefinedReasons.map((r) => (
+            <button
+              key={r}
+              onClick={() => setSelectedReason(r)}
+              className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
+                selectedReason === r
+                  ? "bg-orange-500/30 border border-orange-400/50 text-white"
+                  : "bg-white/5 border border-white/10 text-white/70 hover:bg-white/10"
+              }`}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+
+        {/* Champ texte pour "Autre" */}
+        {selectedReason === "Autre" && (
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Décrivez la raison du signalement..."
+            className="w-full px-4 py-3 mb-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-orange-500/50 resize-none"
+            rows={3}
+          />
+        )}
+
+        {/* Boutons */}
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 font-medium rounded-xl transition-all"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={!selectedReason || (selectedReason === "Autre" && !reason.trim()) || isSubmitting}
+            className={`flex-1 px-4 py-3 font-medium rounded-xl transition-all ${
+              selectedReason && (selectedReason !== "Autre" || reason.trim())
+                ? 'bg-orange-500/30 hover:bg-orange-500/40 border border-orange-400/50 text-white' 
+                : 'bg-gray-700/30 border border-gray-600/30 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {isSubmitting ? 'Envoi...' : 'Signaler'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // Modal de notation
 const RatingModal = ({ 
@@ -230,20 +344,20 @@ const CompletedStoryModal = ({
 
         {/* Titre */}
         <h2 className="text-2xl font-bold text-white text-center mb-2">
-          Histoire déjà terminée !
+          Vous avez déjà terminé cette histoire !
         </h2>
         <p className="text-white/60 text-center mb-2">
-          Vous avez déjà lu <span className="text-white font-medium">"{storyTitle}"</span>
+          Vous avez déjà complété <span className="text-white font-medium">"{storyTitle}"</span>
         </p>
         {endingLabel && (
           <p className="text-green-400/80 text-center text-sm mb-6">
-            Fin atteinte : {endingLabel}
+            ✓ Fin atteinte : {endingLabel}
           </p>
         )}
 
         {/* Message */}
         <p className="text-white/70 text-center mb-6">
-          Voulez-vous recommencer l'aventure et peut-être découvrir une autre fin ?
+          Souhaitez-vous recommencer l'aventure pour découvrir d'autres chemins ou explorer une fin différente ?
         </p>
 
         {/* Boutons */}
@@ -255,7 +369,7 @@ const CompletedStoryModal = ({
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            Recommencer l'histoire
+            Oui, relire cette histoire
           </button>
 
           <button
@@ -263,9 +377,9 @@ const CompletedStoryModal = ({
             className="w-full px-6 py-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white/70 hover:text-white font-medium rounded-xl transition-all duration-300 flex items-center justify-center gap-3"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
             </svg>
-            Retour aux histoires
+            Choisir une autre histoire
           </button>
         </div>
       </div>
@@ -298,6 +412,9 @@ export default function ReadStoryPage() {
   const [resumeData, setResumeData] = useState<{ party: any; pagesData: StoryPage[] } | null>(null);
   const [showCompletedModal, setShowCompletedModal] = useState(false);
   const [completedPartyData, setCompletedPartyData] = useState<{ party: any; pagesData: StoryPage[] } | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
 
   // Mettre à jour la ref quand partyId change
   useEffect(() => {
@@ -319,27 +436,18 @@ export default function ReadStoryPage() {
   const loadStoryData = async () => {
     try {
       setIsLoading(true);
-      console.log("📖 Chargement de l'histoire:", storyId);
 
       // Charger l'histoire
       const storyData = await storiesApi.getById(storyId);
       setStory(storyData);
-      console.log("✅ Histoire chargée:", storyData.title);
 
       // Vérifier si l'utilisateur est l'auteur
       const authorId = typeof storyData.author === 'object' ? storyData.author._id : storyData.author;
       const isAuthor = user && authorId === user._id;
-      console.log("👤 Utilisateur auteur:", isAuthor);
 
       // Charger toutes les pages de l'histoire
       const pagesData = await storyPagesApi.getByStoryId(storyId);
       setPages(pagesData);
-      console.log("✅ Pages chargées:", pagesData.length);
-      console.log("📄 Liste des pages:", pagesData.map(p => ({
-        id: p._id,
-        content_preview: p.content.substring(0, 50) + '...',
-        is_ending: p.is_ending
-      })));
 
       // Créer ou récupérer une partie pour cette histoire
       let currentParty: any = null;
@@ -350,46 +458,56 @@ export default function ReadStoryPage() {
           // Chercher toutes les parties de l'utilisateur pour cette histoire
           const userParties = await partiesApi.getByUserId(user._id);
           
+          // Filtrer les parties valides (avec story_id non null)
+          const validParties = userParties.filter((p: any) => p.story_id != null);
+
           // Chercher une partie non terminée
-          const existingParty = userParties.find((p: any) => {
+          const existingParty = validParties.find((p: any) => {
             const partyStoryId = typeof p.story_id === 'object' ? p.story_id._id : p.story_id;
             return partyStoryId === storyId && !p.end_date;
           });
 
           // Chercher une partie terminée (la plus récente)
-          const completedParties = userParties.filter((p: any) => {
+          const completedParties = validParties.filter((p: any) => {
             const partyStoryId = typeof p.story_id === 'object' ? p.story_id._id : p.story_id;
             return partyStoryId === storyId && p.end_date;
           }).sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime());
           
           if (completedParties.length > 0) {
             completedParty = completedParties[0];
-            console.log("✅ Partie terminée trouvée, fin atteinte:", completedParty.ending_id);
           }
 
           if (existingParty) {
             setPartyId(existingParty._id);
             currentParty = existingParty;
-            console.log("📚 Partie en cours trouvée, progression:", existingParty.path.length, "pages visitées");
+            console.log("📚 Partie en cours récupérée:", existingParty._id);
 
             // Si l'utilisateur est l'auteur ET qu'il a une progression
             // On réinitialise automatiquement car c'est probablement de l'écriture
             if (isAuthor && existingParty.path.length > 0) {
-              console.log("👤 Vous êtes l'auteur - réinitialisation automatique de la progression");
               await partiesApi.update(existingParty._id, {
                 path: [],
                 end_date: undefined,
               }).catch(err => console.error("Erreur lors de la réinitialisation:", err));
               currentParty.path = []; // Réinitialiser localement aussi
             }
-          } else if (completedParty && !isAuthor) {
+          } else if (completedParty) {
             // L'utilisateur a terminé cette histoire - lui proposer de recommencer
-            console.log("🏁 L'utilisateur a déjà terminé cette histoire");
-            setCompletedPartyData({ party: completedParty, pagesData });
-            setShowCompletedModal(true);
-            setIsLoading(false);
-            return; // Arrêter ici, l'utilisateur choisira
-          } else {
+            // (sauf si c'est l'auteur, pour lui permettre de tester librement)
+            if (!isAuthor) {
+              console.log("🎯 Histoire déjà terminée détectée ! Affichage du modal...");
+              console.log("   - Partie terminée:", completedParty._id);
+              console.log("   - Date de fin:", completedParty.end_date);
+              setCompletedPartyData({ party: completedParty, pagesData });
+              setShowCompletedModal(true);
+              setIsLoading(false);
+              return; // Arrêter ici, l'utilisateur choisira
+            }
+            console.log("👤 Auteur détecté - pas de modal, création automatique d'une nouvelle partie");
+            // Si c'est l'auteur, on le laisse créer une nouvelle partie sans modal
+          }
+
+          if (!existingParty && !completedParty) {
             // Créer une nouvelle partie
             const newParty = await partiesApi.create({
               user_id: user._id,
@@ -397,7 +515,7 @@ export default function ReadStoryPage() {
             });
             setPartyId(newParty._id);
             currentParty = newParty;
-            console.log("🆕 Nouvelle partie créée");
+            console.log("🆕 Nouvelle partie créée:", newParty._id);
           }
         } catch (err) {
           console.error("Erreur lors de la gestion de la partie:", err);
@@ -406,8 +524,8 @@ export default function ReadStoryPage() {
 
       // Trouver la première page ou reprendre la dernière page visitée
       if (pagesData.length > 0) {
-        let shouldResume = false;
-        let canResume = false;
+        console.log("📄 Pages disponibles:", pagesData.length);
+        console.log("📚 Partie actuelle:", currentParty ? `ID: ${currentParty._id}, Path: ${currentParty.path?.length || 0} pages` : "Aucune");
 
         // Si la partie a un historique, vérifier s'il est valide pour une reprise
         if (currentParty && currentParty.path && currentParty.path.length > 0) {
@@ -428,21 +546,12 @@ export default function ReadStoryPage() {
             const isFirstPage = (await findFirstPage(pagesData))?._id === lastPageIdStr;
 
             if (lastPage.is_ending || lastPageChoices.length > 0 || isFirstPage) {
-              canResume = true;
-              console.log("✅ Progression valide détectée (page", currentParty.path.length, ")");
-              console.log("   - Page de fin:", lastPage.is_ending);
-              console.log("   - Nombre de choix:", lastPageChoices.length);
-              console.log("   - Première page:", isFirstPage);
-
               // Afficher la modal pour demander à l'utilisateur
               setResumeData({ party: currentParty, pagesData });
               setShowResumeModal(true);
               setIsLoading(false);
               return; // Arrêter ici, l'utilisateur choisira
             } else {
-              console.log("⚠️ Historique invalide détecté (page sans choix, probablement créée en mode écriture)");
-              console.log("   - Réinitialisation automatique de la progression...");
-
               // Réinitialiser la progression dans la base de données
               if (partyIdRef.current) {
                 await partiesApi.update(partyIdRef.current, {
@@ -453,27 +562,13 @@ export default function ReadStoryPage() {
           }
         }
 
-        if (shouldResume && currentParty) {
-          const lastPageId = currentParty.path[currentParty.path.length - 1];
-          const lastPageIdStr = typeof lastPageId === 'object' ? lastPageId.toString() : lastPageId;
-
-          console.log("🔄 Reprise de la lecture à la dernière page visitée:", lastPageIdStr);
-
-          // Restaurer l'historique complet
-          setPageHistory(currentParty.path.map((id: any) =>
-            typeof id === 'object' ? id.toString() : id
-          ));
-
-          await navigateToPage(lastPageIdStr, pagesData);
+        // Si on arrive ici, c'est qu'on n'a pas de progression valide à reprendre
+        // Commencer au début
+        const firstPage = await findFirstPage(pagesData);
+        if (firstPage) {
+          await navigateToPage(firstPage._id, pagesData);
         } else {
-          // Commencer au début
-          console.log("🆕 Démarrage d'une nouvelle lecture depuis le début");
-          const firstPage = await findFirstPage(pagesData);
-          if (firstPage) {
-            await navigateToPage(firstPage._id, pagesData);
-          } else {
-            setError("Aucune page de départ trouvée pour cette histoire");
-          }
+          setError("Aucune page de départ trouvée pour cette histoire");
         }
       } else {
         setError("Cette histoire n'a pas encore de pages");
@@ -494,17 +589,12 @@ export default function ReadStoryPage() {
     if (pagesData.length === 0) return null;
 
     try {
-      console.log(`🔍 Recherche de la page racine parmi ${pagesData.length} pages...`);
-
       // Charger tous les choix pour toutes les pages
       const allChoicesPromises = pagesData.map(page =>
         storyChoicesApi.getByPageId(page._id).catch(() => [])
       );
       const allChoicesArrays = await Promise.all(allChoicesPromises);
       const allChoices = allChoicesArrays.flat();
-
-      console.log(`📋 Total de choix dans l'histoire: ${allChoices.length}`);
-      console.log(`📋 Détails de tous les choix:`, allChoices);
 
       // Trouver les IDs de toutes les pages ciblées
       const targetedPageIds = new Set(
@@ -513,44 +603,31 @@ export default function ReadStoryPage() {
           .filter(id => id) // Filtrer les undefined/null
       );
 
-      console.log(`🎯 Pages ciblées par des choix:`, Array.from(targetedPageIds));
-      console.log(`📄 IDs de toutes les pages:`, pagesData.map(p => p._id));
-
       // Trouver toutes les pages qui ne sont ciblées par aucun choix
       const rootPages = pagesData.filter(page => !targetedPageIds.has(page._id));
 
-      console.log(`🔍 Pages racines candidates: ${rootPages.length}`);
-      rootPages.forEach(p => console.log(`   - ${p._id}`));
-
       if (rootPages.length === 0) {
-        console.warn("⚠️ Aucune page racine trouvée, utilisation de la première page");
         return pagesData[0];
       }
 
       if (rootPages.length === 1) {
-        console.log(`🏁 Page racine unique trouvée: ${rootPages[0]._id}`);
         return rootPages[0];
       }
 
       // S'il y a plusieurs pages racines (problème de structure),
       // prendre celle qui a des choix en priorité
-      console.warn(`⚠️ Plusieurs pages racines trouvées (${rootPages.length}), recherche de celle avec des choix...`);
-
       for (const page of rootPages) {
         const pageChoices = await storyChoicesApi.getByPageId(page._id).catch(() => []);
-        console.log(`   - ${page._id}: ${pageChoices.length} choix`);
 
         if (pageChoices.length > 0) {
-          console.log(`✅ Page racine avec choix sélectionnée: ${page._id}`);
           return page;
         }
       }
 
       // Si aucune page racine n'a de choix, prendre la première
-      console.warn("⚠️ Aucune page racine avec choix, utilisation de la première page racine");
       return rootPages[0];
     } catch (err) {
-      console.error("❌ Erreur lors de la recherche de la première page:", err);
+      console.error("Erreur lors de la recherche de la première page:", err);
       return pagesData[0];
     }
   };
@@ -564,18 +641,17 @@ export default function ReadStoryPage() {
       const page = allPages.find(p => p._id === pageId);
       
       if (!page) {
-        console.error("❌ Page non trouvée:", pageId);
+        console.error("Page non trouvée:", pageId);
         return;
       }
 
-      console.log("📄 Navigation vers la page:", pageId);
       setCurrentPage(page);
 
       // Ajouter à l'historique seulement si ce n'est pas déjà la dernière page
       setPageHistory(prev => {
         // Si c'est déjà la dernière page de l'historique, ne pas l'ajouter à nouveau
         if (prev.length > 0 && prev[prev.length - 1] === pageId) {
-          console.log("⏭️ Page déjà dans l'historique, pas de duplication");
+          console.log("⏭️ Page déjà dans l'historique, pas de sauvegarde");
           return prev;
         }
 
@@ -583,12 +659,23 @@ export default function ReadStoryPage() {
 
         // Mettre à jour la progression dans la partie
         if (partyIdRef.current) {
+          console.log("💾 Sauvegarde de la progression:", {
+            partyId: partyIdRef.current,
+            pageNumber: newHistory.length,
+            totalPages: newHistory.length
+          });
+
           partiesApi.update(partyIdRef.current, {
             path: newHistory,
-          }).catch(err => {
+          })
+          .then(() => {
+            console.log("✅ Progression sauvegardée avec succès");
+          })
+          .catch(err => {
             console.error("❌ Erreur lors de la mise à jour de la progression:", err);
           });
-          console.log("💾 Progression enregistrée: page", newHistory.length);
+        } else {
+          console.warn("⚠️ Aucune partie active (partyId manquant) - progression non sauvegardée");
         }
 
         return newHistory;
@@ -596,16 +683,7 @@ export default function ReadStoryPage() {
 
       // Charger les choix de cette page
       if (!page.is_ending) {
-        console.log(`🔍 Récupération des choix pour la page ${pageId}...`);
         const pageChoices = await storyChoicesApi.getByPageId(pageId);
-        console.log(`📋 Choix chargés pour la page ${pageId}:`, pageChoices.length);
-        console.log(`📋 Détails des choix:`, pageChoices);
-
-        // Vérifier si les choix ont des target_page_id
-        pageChoices.forEach((choice, index) => {
-          console.log(`  Choix ${index + 1}: "${choice.text}" -> target_page_id: ${choice.target_page_id || 'AUCUN'}`);
-        });
-
         setChoices(pageChoices);
       } else {
         setChoices([]);
@@ -621,7 +699,7 @@ export default function ReadStoryPage() {
       }, 300);
 
     } catch (err) {
-      console.error("❌ Erreur lors de la navigation:", err);
+      console.error("Erreur lors de la navigation:", err);
       setIsTransitioning(false);
     }
   }, [pages, hasCompletedEnding]);
@@ -629,11 +707,13 @@ export default function ReadStoryPage() {
   // Gérer l'arrivée à une fin
   const handleEndingReached = async () => {
     try {
-      // Marquer la partie comme terminée
-      if (partyIdRef.current) {
+      // Marquer la partie comme terminée avec l'ID de la fin atteinte
+      if (partyIdRef.current && currentPage) {
         await partiesApi.update(partyIdRef.current, {
           end_date: new Date().toISOString(),
+          ending_id: currentPage._id, // Enregistrer quelle fin a été atteinte
         });
+        console.log("✅ Partie terminée - Fin atteinte:", currentPage.ending_label || currentPage._id);
       }
       
       setHasCompletedEnding(true);
@@ -650,27 +730,59 @@ export default function ReadStoryPage() {
   const handleRatingSubmit = async (rating: number) => {
     try {
       if (user && storyId) {
-        await ratingsApi.create({
+        console.log("📝 Enregistrement du rating:", { user_id: user._id, story_id: storyId, rating });
+        const result = await ratingsApi.create({
           user_id: user._id,
           story_id: storyId,
           rating: rating,
         });
-        console.log("✅ Note enregistrée:", rating);
+        console.log("✅ Rating enregistré avec succès:", result);
+      } else {
+        console.error("❌ Utilisateur ou storyId manquant:", { user, storyId });
       }
     } catch (err) {
-      console.error("Erreur lors de l'enregistrement de la note:", err);
+      console.error("❌ Erreur lors de l'enregistrement de la note:", err);
     } finally {
       setShowRatingModal(false);
     }
   };
 
+  // Soumettre le signalement
+  const handleReportSubmit = async (reason: string) => {
+    try {
+      setIsSubmittingReport(true);
+      if (user && storyId) {
+        console.log("🚨 Envoi du signalement:", { user_id: user._id, story_id: storyId, reason });
+        await reportsApi.create({
+          user_id: user._id,
+          story_id: storyId,
+          reason: reason,
+        });
+        console.log("✅ Signalement envoyé avec succès");
+        setReportSuccess(true);
+        setShowReportModal(false);
+        // Afficher un message de succès temporaire
+        setTimeout(() => setReportSuccess(false), 3000);
+      } else {
+        console.error("❌ Utilisateur ou storyId manquant:", { user, storyId });
+        alert("Erreur: Vous devez être connecté pour signaler une histoire.");
+      }
+    } catch (err: any) {
+      console.error("❌ Erreur lors du signalement:", err);
+      const errorMessage = err?.message || "Une erreur est survenue lors du signalement.";
+      alert(errorMessage);
+      setShowReportModal(false);
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  };
+
   // Gérer le choix d'une option
   const handleChoice = (choice: StoryChoice) => {
-    console.log("🎯 Choix sélectionné:", choice.text);
     if (choice.target_page_id) {
       navigateToPage(choice.target_page_id);
     } else {
-      console.error("❌ Ce choix n'a pas de page cible");
+      console.error("Ce choix n'a pas de page cible");
       setError("Ce choix n'est pas encore développé");
     }
   };
@@ -690,7 +802,7 @@ export default function ReadStoryPage() {
         partiesApi.update(partyIdRef.current, {
           path: newHistory,
         }).catch(err => {
-          console.error("❌ Erreur lors de la mise à jour de la progression:", err);
+          console.error("Erreur lors de la mise à jour de la progression:", err);
         });
       }
 
@@ -769,31 +881,40 @@ export default function ReadStoryPage() {
 
   // Recommencer une histoire déjà terminée
   const handleRestartCompletedStory = async () => {
-    if (!completedPartyData || !user) return;
+    if (!completedPartyData || !user) {
+      console.error("❌ Données manquantes pour relire l'histoire");
+      return;
+    }
 
     const { pagesData } = completedPartyData;
 
     try {
+      console.log("🔄 Création d'une nouvelle partie pour relire l'histoire...");
+
       // Créer une nouvelle partie pour cette histoire
       const newParty = await partiesApi.create({
         user_id: user._id,
         story_id: storyId,
       });
       setPartyId(newParty._id);
-      console.log("🆕 Nouvelle partie créée pour relecture");
+      console.log("✅ Nouvelle partie créée pour relecture, ID:", newParty._id);
 
       setPageHistory([]);
       setHasCompletedEnding(false);
       setShowCompletedModal(false);
       setPages(pagesData);
+      setIsLoading(false);
 
       // Démarrer depuis le début
       const firstPage = await findFirstPage(pagesData);
       if (firstPage) {
+        console.log("📖 Démarrage de la relecture depuis la première page");
         await navigateToPage(firstPage._id, pagesData);
+      } else {
+        setError("Impossible de trouver la première page de l'histoire");
       }
     } catch (err) {
-      console.error("Erreur lors de la création de la nouvelle partie:", err);
+      console.error("❌ Erreur lors de la création de la nouvelle partie:", err);
       setError("Erreur lors du redémarrage de l'histoire");
     }
   };
@@ -841,7 +962,42 @@ export default function ReadStoryPage() {
     );
   }
 
+  // Ne pas afficher "Histoire vide" si un modal est ouvert (resume, completed, report)
   if (!story || !currentPage) {
+    // Si un modal est affiché, on attend la décision de l'utilisateur
+    if (showResumeModal || showCompletedModal || showReportModal) {
+      return (
+        <div className="min-h-screen w-full flex items-center justify-center bg-black">
+          <div className="text-center">
+            <svg className="animate-spin h-12 w-12 text-cyan-400 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p className="text-white/60 text-lg">Préparation de l'histoire...</p>
+          </div>
+          
+          {/* Modal de reprise */}
+          <ResumeModal
+            isOpen={showResumeModal}
+            onResume={handleResumeReading}
+            onRestart={handleStartFresh}
+            progressLength={resumeData?.party?.path?.length || 0}
+          />
+
+          {/* Modal pour histoire déjà terminée */}
+          <CompletedStoryModal
+            isOpen={showCompletedModal}
+            onRestart={handleRestartCompletedStory}
+            onGoBack={handleGoBackToStories}
+            storyTitle={story?.title || "cette histoire"}
+            endingLabel={completedPartyData?.party?.ending_id ? 
+              pages.find(p => p._id === completedPartyData.party.ending_id)?.ending_label : undefined
+            }
+          />
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-black">
         <div className="text-center max-w-md px-4">
@@ -878,8 +1034,8 @@ export default function ReadStoryPage() {
         />
       </div>
 
-      {/* Header fixe */}
-      <header className="fixed top-0 left-0 right-0 z-20 bg-black/50 backdrop-blur-xl border-b border-white/10">
+      {/* Header fixe - sous la NavBar principale */}
+      <header className="fixed top-20 left-0 right-0 z-40 bg-black/50 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           {/* Bouton retour */}
           <button
@@ -900,6 +1056,18 @@ export default function ReadStoryPage() {
 
           {/* Boutons actions */}
           <div className="flex items-center gap-3">
+            {/* Bouton signaler */}
+            <button
+              onClick={() => setShowReportModal(true)}
+              className="flex items-center gap-1 text-white/70 hover:text-orange-400 transition-colors"
+              title="Signaler cette histoire"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span className="hidden sm:inline text-sm">Signaler</span>
+            </button>
+
             {/* Bouton recommencer */}
             {pageHistory.length > 1 && (
               <button
@@ -922,8 +1090,8 @@ export default function ReadStoryPage() {
         </div>
       </header>
 
-      {/* Contenu principal */}
-      <main className="relative z-10 min-h-screen pt-24 pb-8 px-4">
+      {/* Contenu principal - pt-44 pour laisser place à NavBar + header lecture */}
+      <main className="relative z-10 min-h-screen pt-44 pb-8 px-4">
         <div className="max-w-3xl mx-auto">
           {/* Carte du contenu */}
           <div 
@@ -1082,6 +1250,27 @@ export default function ReadStoryPage() {
           pages.find(p => p._id === completedPartyData.party.ending_id)?.ending_label : undefined
         }
       />
+
+      {/* Modal de signalement */}
+      <ReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        onSubmit={handleReportSubmit}
+        storyTitle={story?.title || "cette histoire"}
+        isSubmitting={isSubmittingReport}
+      />
+
+      {/* Toast de succès du signalement */}
+      {reportSuccess && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
+          <div className="bg-green-500/20 border border-green-400/50 backdrop-blur-xl rounded-xl px-6 py-4 flex items-center gap-3">
+            <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-green-300 font-medium">Signalement envoyé avec succès</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

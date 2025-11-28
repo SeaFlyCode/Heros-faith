@@ -39,6 +39,7 @@ export default function StoryTreeVisualization({
   const containerRef = useRef<HTMLDivElement>(null);
   const miniContainerRef = useRef<HTMLDivElement>(null);
 
+
   // Log des props reçues
   useEffect(() => {
     console.log("🎨 [StoryTreeVisualization] Rendu avec:", {
@@ -362,7 +363,7 @@ export default function StoryTreeVisualization({
   return (
     <>
       {/* Vue minimaliste - Compacte et scrollable */}
-      <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-2xl rounded-xl border border-cyan-400/30 shadow-xl p-2 w-56">
+      <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-2xl rounded-xl border border-cyan-400/30 shadow-xl p-2 w-full sm:w-56 max-w-xs sm:max-w-none">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
             <div className="bg-cyan-500/20 p-1.5 rounded-md">
@@ -389,32 +390,35 @@ export default function StoryTreeVisualization({
 
         {/* Contrôles de zoom */}
         <div className="flex items-center justify-between mb-1.5">
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-1">
             <button
               onClick={zoomOut}
               disabled={zoom <= 0.4}
-              className="w-5 h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-cyan-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-xs font-bold cursor-pointer"
+              className="w-6 h-6 sm:w-5 sm:h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 active:bg-white/30 text-cyan-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm sm:text-xs font-bold cursor-pointer touch-manipulation"
               title="Dézoomer"
+              type="button"
             >
               −
             </button>
             <button
               onClick={resetZoom}
-              className="px-1.5 h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-cyan-300 transition-all text-[9px] font-medium cursor-pointer"
+              className="px-2 h-6 sm:px-1.5 sm:h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 active:bg-white/30 text-cyan-300 transition-all text-[10px] sm:text-[9px] font-medium cursor-pointer touch-manipulation"
               title="Réinitialiser le zoom"
+              type="button"
             >
               {Math.round(zoom * 100)}%
             </button>
             <button
               onClick={zoomIn}
               disabled={zoom >= 2}
-              className="w-5 h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-cyan-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-xs font-bold cursor-pointer"
+              className="w-6 h-6 sm:w-5 sm:h-5 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 active:bg-white/30 text-cyan-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm sm:text-xs font-bold cursor-pointer touch-manipulation"
               title="Zoomer"
+              type="button"
             >
               +
             </button>
           </div>
-          <span className="text-[8px] text-white/40">Glisser</span>
+          <span className="text-[9px] sm:text-[8px] text-white/40 hidden sm:inline">Glisser</span>
         </div>
 
         {/* Légende */}
@@ -780,15 +784,17 @@ export default function StoryTreeVisualization({
                                 : "bg-gradient-to-br from-slate-700 to-slate-800 border border-cyan-400/50 text-cyan-100 hover:from-cyan-600 hover:to-blue-700"
                             }`}
                             style={{ 
-                              minWidth: `${nodeMinWidth}px`, 
+                              width: `${nodeMaxWidth}px`,
+                              minWidth: `${nodeMinWidth}px`,
                               minHeight: `${nodeMinHeight}px`, 
                               maxWidth: `${nodeMaxWidth}px`,
                               fontSize: `${fontSize}px`,
-                              padding: `${4 * zoom}px ${8 * zoom}px`
+                              padding: `${4 * zoom}px ${8 * zoom}px`,
+                              overflow: 'hidden'
                             }}
                             title={node.label || "Début"}
                           >
-                            <span className="truncate text-center leading-tight">{node.label || "Début"}</span>
+                            <span className="block w-full truncate text-center leading-tight" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.label || "Début"}</span>
                             {node.isEnd && <span style={{ fontSize: `${8 * zoom}px` }} className="mt-0.5 text-green-400">FIN</span>}
                           </div>
                           {currentNode?.id === node.id && (
@@ -811,12 +817,12 @@ export default function StoryTreeVisualization({
         {/* Bouton plein écran en bas */}
         <button
           onClick={() => setIsModalOpen(true)}
-          className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-400/30 rounded-lg text-cyan-400 hover:text-cyan-300 transition-all text-xs cursor-pointer"
+          className="mt-2 w-full flex items-center justify-center gap-1.5 py-2 sm:py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 active:bg-cyan-500/30 border border-cyan-400/30 rounded-lg text-cyan-400 hover:text-cyan-300 transition-all text-xs sm:text-xs cursor-pointer touch-manipulation"
           title="Vue plein écran"
           type="button"
         >
           <svg
-            className="w-3.5 h-3.5"
+            className="w-4 h-4 sm:w-3.5 sm:h-3.5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -843,13 +849,13 @@ export default function StoryTreeVisualization({
             }
           }}
         >
-          <div className="h-full flex flex-col p-8">
+          <div className="h-full flex flex-col p-4 md:p-8">
             {/* Header du modal */}
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-white text-2xl font-bold flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 md:mb-6">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-white text-xl md:text-2xl font-bold flex items-center gap-2 md:gap-3">
                   <svg
-                    className="w-6 h-6 text-cyan-400"
+                    className="w-5 h-5 md:w-6 md:h-6 text-cyan-400 flex-shrink-0"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -861,16 +867,16 @@ export default function StoryTreeVisualization({
                       d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
                     />
                   </svg>
-                  Arborescence complète
+                  <span className="truncate">Arborescence complète</span>
                 </h2>
                 {currentNode && (
-                  <p className="text-cyan-400 text-sm mt-1 ml-9 flex items-center gap-2">
-                    <span className="text-white/50">Nœud actuel:</span>
-                    <span className="font-semibold">{currentNode.label || "Début"}</span>
+                  <p className="text-cyan-400 text-xs md:text-sm mt-1 ml-7 md:ml-9 flex items-center gap-2">
+                    <span className="text-white/50 flex-shrink-0">Nœud actuel:</span>
+                    <span className="font-semibold truncate" title={currentNode.label || "Début"} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentNode.label || "Début"}</span>
                   </p>
                 )}
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
                 {/* Bouton pour recentrer sur le nœud actuel */}
                 {currentNode && (
                   <button
@@ -880,7 +886,7 @@ export default function StoryTreeVisualization({
                     type="button"
                   >
                     <svg
-                      className="w-5 h-5"
+                      className="w-5 h-5 flex-shrink-0"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -898,16 +904,17 @@ export default function StoryTreeVisualization({
                         d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
                       />
                     </svg>
-                    <span className="text-sm">Recentrer</span>
+                    <span className="text-xs md:text-sm hidden sm:inline">Recentrer</span>
                   </button>
                 )}
                 <button
                   onClick={() => setIsModalOpen(false)}
                   className="text-white/70 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg cursor-pointer"
                   type="button"
+                  aria-label="Fermer"
                 >
                   <svg
-                    className="w-6 h-6"
+                    className="w-5 h-5 md:w-6 md:h-6"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -926,7 +933,7 @@ export default function StoryTreeVisualization({
             {/* Contenu du modal */}
             <div
               ref={containerRef}
-              className="flex-1 bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-8 overflow-auto"
+              className="flex-1 bg-white/5 backdrop-blur-xl rounded-xl md:rounded-2xl border border-white/10 p-4 md:p-8 overflow-auto"
               style={{ scrollBehavior: 'smooth' }}
             >
               {(() => {
@@ -956,10 +963,11 @@ export default function StoryTreeVisualization({
                   maxDepth = Math.max(maxDepth, getNodeDepth(node.id));
                 });
 
-                // Paramètres de layout en PIXELS pour le modal (plus grand)
-                const startY = 80;
-                const levelSpacing = 150;
-                const nodeSpacing = 200;
+                // Paramètres de layout en PIXELS pour le modal (responsive)
+                const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+                const startY = isMobile ? 60 : 80;
+                const levelSpacing = isMobile ? 120 : 150;
+                const nodeSpacing = isMobile ? 160 : 200;
 
                 // Calculer les positions avec l'algorithme récursif
                 const positions = new Map<string, { x: number; y: number }>();
@@ -1215,16 +1223,17 @@ export default function StoryTreeVisualization({
                               }}
                             >
                               <div
-                                className={`px-5 py-4 rounded-xl backdrop-blur-sm transition-all shadow-xl ${
+                                className={`px-3 py-3 md:px-5 md:py-4 rounded-lg md:rounded-xl backdrop-blur-sm transition-all shadow-xl ${
                                   currentNode?.id === node.id
-                                    ? "bg-gradient-to-br from-cyan-500/50 to-blue-500/50 border-2 border-yellow-400 text-white shadow-2xl shadow-cyan-500/50 scale-110 ring-4 ring-yellow-400/30"
+                                    ? "bg-gradient-to-br from-cyan-500/50 to-blue-500/50 border-2 border-yellow-400 text-white shadow-2xl shadow-cyan-500/50 scale-105 md:scale-110 ring-4 ring-yellow-400/30"
                                     : node.isEnd
                                     ? "bg-gradient-to-br from-green-500/30 to-emerald-500/30 border-2 border-green-400/50 text-green-100 hover:from-green-500/40 hover:to-emerald-500/40 hover:scale-105"
                                     : "bg-gradient-to-br from-white/10 to-white/5 border-2 border-cyan-400/40 text-cyan-100 hover:from-cyan-500/30 hover:to-blue-500/30 hover:border-cyan-300 hover:scale-105"
                                 }`}
+                                style={{ minWidth: isMobile ? '140px' : '180px', maxWidth: isMobile ? '180px' : '220px', overflow: 'hidden' }}
                               >
                                 <div className="text-center">
-                                  <div className="text-lg font-bold mb-1">
+                                  <div className="text-base md:text-lg font-bold mb-1 truncate" title={node.label || "Début"} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                     {node.label || "Début"}
                                   </div>
                                   <p className={`text-xs whitespace-nowrap ${
@@ -1265,48 +1274,48 @@ export default function StoryTreeVisualization({
             </div>
 
             {/* Statistiques et légende */}
-            <div className="mt-6 flex items-center justify-between">
+            <div className="mt-4 md:mt-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
               {/* Statistiques */}
-              <div className="flex items-center gap-6 text-sm">
+              <div className="flex flex-wrap items-center gap-3 md:gap-6 text-xs md:text-sm">
                 <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-cyan-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
                   </svg>
-                  <span className="text-white/70">
+                  <span className="text-white/70 whitespace-nowrap">
                     <span className="font-semibold text-white">{nodes.length}</span> nœud{nodes.length > 1 ? 's' : ''}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-white/70">
+                  <span className="text-white/70 whitespace-nowrap">
                     <span className="font-semibold text-white">{nodes.filter(n => n.isEnd).length}</span> fin{nodes.filter(n => n.isEnd).length > 1 ? 's' : ''}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-cyan-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16l2.879-2.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span className="text-white/70">
+                  <span className="text-white/70 whitespace-nowrap">
                     <span className="font-semibold text-white">{nodes.reduce((sum, n) => sum + n.choices.length, 0)}</span> choix
                   </span>
                 </div>
               </div>
 
               {/* Légende */}
-              <div className="flex items-center gap-8">
+              <div className="flex flex-wrap items-center gap-3 md:gap-6 lg:gap-8">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded border-2 border-red-500 bg-cyan-500/30"></div>
-                  <span className="text-white/70 text-sm">Nœud actuel</span>
+                  <div className="w-5 h-5 md:w-6 md:h-6 rounded border-2 border-red-500 bg-cyan-500/30 flex-shrink-0"></div>
+                  <span className="text-white/70 text-xs md:text-sm whitespace-nowrap">Nœud actuel</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded border border-cyan-400/30 bg-white/10"></div>
-                  <span className="text-white/70 text-sm">Nœud inactif</span>
+                  <div className="w-5 h-5 md:w-6 md:h-6 rounded border border-cyan-400/30 bg-white/10 flex-shrink-0"></div>
+                  <span className="text-white/70 text-xs md:text-sm whitespace-nowrap">Nœud inactif</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded border-2 border-green-400 bg-green-500/30"></div>
-                  <span className="text-white/70 text-sm">
+                  <div className="w-5 h-5 md:w-6 md:h-6 rounded border-2 border-green-400 bg-green-500/30 flex-shrink-0"></div>
+                  <span className="text-white/70 text-xs md:text-sm whitespace-nowrap">
                     Fin de l&apos;histoire
                   </span>
                 </div>

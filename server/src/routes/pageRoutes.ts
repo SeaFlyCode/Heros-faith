@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middlewares/authMiddleware';
-import { roleMiddleware } from '../middlewares/roleMiddleware';
 import {
   createPage,
   getAllPages,
@@ -18,7 +17,7 @@ router.get('/', getAllPages);
 router.get('/:pageId/choices', getChoicesByPageId);
 router.get('/:pageId', getPageById);
 router.patch('/:pageId', updatePage);
-router.delete('/:pageId', roleMiddleware('admin'), deletePage);
+router.delete('/:pageId', deletePage);
 
 export default router;
 
