@@ -230,20 +230,20 @@ const CompletedStoryModal = ({
 
         {/* Titre */}
         <h2 className="text-2xl font-bold text-white text-center mb-2">
-          Histoire déjà terminée !
+          Vous avez déjà terminé cette histoire !
         </h2>
         <p className="text-white/60 text-center mb-2">
-          Vous avez déjà lu <span className="text-white font-medium">"{storyTitle}"</span>
+          Vous avez déjà complété <span className="text-white font-medium">"{storyTitle}"</span>
         </p>
         {endingLabel && (
           <p className="text-green-400/80 text-center text-sm mb-6">
-            Fin atteinte : {endingLabel}
+            ✓ Fin atteinte : {endingLabel}
           </p>
         )}
 
         {/* Message */}
         <p className="text-white/70 text-center mb-6">
-          Voulez-vous recommencer l'aventure et peut-être découvrir une autre fin ?
+          Souhaitez-vous recommencer l'aventure pour découvrir d'autres chemins ou explorer une fin différente ?
         </p>
 
         {/* Boutons */}
@@ -255,7 +255,7 @@ const CompletedStoryModal = ({
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            Recommencer l'histoire
+            Oui, relire cette histoire
           </button>
 
           <button
@@ -263,9 +263,9 @@ const CompletedStoryModal = ({
             className="w-full px-6 py-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white/70 hover:text-white font-medium rounded-xl transition-all duration-300 flex items-center justify-center gap-3"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
             </svg>
-            Retour aux histoires
+            Choisir une autre histoire
           </button>
         </div>
       </div>
@@ -358,7 +358,6 @@ export default function ReadStoryPage() {
           
           if (completedParties.length > 0) {
             completedParty = completedParties[0];
-            console.log("✅ Partie terminée trouvée, fin atteinte:", completedParty.ending_id);
           }
 
           if (existingParty) {
@@ -374,13 +373,23 @@ export default function ReadStoryPage() {
               }).catch(err => console.error("Erreur lors de la réinitialisation:", err));
               currentParty.path = []; // Réinitialiser localement aussi
             }
-          } else if (completedParty && !isAuthor) {
+          } else if (completedParty) {
             // L'utilisateur a terminé cette histoire - lui proposer de recommencer
-            setCompletedPartyData({ party: completedParty, pagesData });
-            setShowCompletedModal(true);
-            setIsLoading(false);
-            return; // Arrêter ici, l'utilisateur choisira
-          } else {
+            // (sauf si c'est l'auteur, pour lui permettre de tester librement)
+            if (!isAuthor) {
+              console.log("🎯 Histoire déjà terminée détectée ! Affichage du modal...");
+              console.log("   - Partie terminée:", completedParty._id);
+              console.log("   - Date de fin:", completedParty.end_date);
+              setCompletedPartyData({ party: completedParty, pagesData });
+              setShowCompletedModal(true);
+              setIsLoading(false);
+              return; // Arrêter ici, l'utilisateur choisira
+            }
+            console.log("👤 Auteur détecté - pas de modal, création automatique d'une nouvelle partie");
+            // Si c'est l'auteur, on le laisse créer une nouvelle partie sans modal
+          }
+
+          if (!existingParty && !completedParty) {
             // Créer une nouvelle partie
             const newParty = await partiesApi.create({
               user_id: user._id,
@@ -587,14 +596,18 @@ export default function ReadStoryPage() {
   const handleRatingSubmit = async (rating: number) => {
     try {
       if (user && storyId) {
-        await ratingsApi.create({
+        console.log("📝 Enregistrement du rating:", { user_id: user._id, story_id: storyId, rating });
+        const result = await ratingsApi.create({
           user_id: user._id,
           story_id: storyId,
           rating: rating,
         });
+        console.log("✅ Rating enregistré avec succès:", result);
+      } else {
+        console.error("❌ Utilisateur ou storyId manquant:", { user, storyId });
       }
     } catch (err) {
-      console.error("Erreur lors de l'enregistrement de la note:", err);
+      console.error("❌ Erreur lors de l'enregistrement de la note:", err);
     } finally {
       setShowRatingModal(false);
     }
@@ -704,31 +717,40 @@ export default function ReadStoryPage() {
 
   // Recommencer une histoire déjà terminée
   const handleRestartCompletedStory = async () => {
-    if (!completedPartyData || !user) return;
+    if (!completedPartyData || !user) {
+      console.error("❌ Données manquantes pour relire l'histoire");
+      return;
+    }
 
     const { pagesData } = completedPartyData;
 
     try {
+      console.log("🔄 Création d'une nouvelle partie pour relire l'histoire...");
+
       // Créer une nouvelle partie pour cette histoire
       const newParty = await partiesApi.create({
         user_id: user._id,
         story_id: storyId,
       });
       setPartyId(newParty._id);
-      console.log("🆕 Nouvelle partie créée pour relecture");
+      console.log("✅ Nouvelle partie créée pour relecture, ID:", newParty._id);
 
       setPageHistory([]);
       setHasCompletedEnding(false);
       setShowCompletedModal(false);
       setPages(pagesData);
+      setIsLoading(false);
 
       // Démarrer depuis le début
       const firstPage = await findFirstPage(pagesData);
       if (firstPage) {
+        console.log("📖 Démarrage de la relecture depuis la première page");
         await navigateToPage(firstPage._id, pagesData);
+      } else {
+        setError("Impossible de trouver la première page de l'histoire");
       }
     } catch (err) {
-      console.error("Erreur lors de la création de la nouvelle partie:", err);
+      console.error("❌ Erreur lors de la création de la nouvelle partie:", err);
       setError("Erreur lors du redémarrage de l'histoire");
     }
   };

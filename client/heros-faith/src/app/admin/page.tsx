@@ -21,6 +21,10 @@ export default function AdminPage() {
   const [censorReason, setCensorReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Modal de suppression
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [storyToDelete, setStoryToDelete] = useState<Story | null>(null);
+
   // Vérifier l'authentification et le rôle admin
   useEffect(() => {
     if (!authLoading) {
@@ -110,6 +114,32 @@ export default function AdminPage() {
       ));
     } catch (err: any) {
       setError(err.message || "Erreur lors de la levée de censure");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Ouvrir la modal de suppression
+  const openDeleteModal = (story: Story) => {
+    setStoryToDelete(story);
+    setShowDeleteModal(true);
+  };
+
+  // Supprimer une histoire
+  const handleDelete = async () => {
+    if (!storyToDelete) return;
+
+    try {
+      setIsProcessing(true);
+      await storiesApi.delete(storyToDelete._id);
+
+      // Retirer de la liste
+      setStories(stories.filter(s => s._id !== storyToDelete._id));
+
+      setShowDeleteModal(false);
+      setStoryToDelete(null);
+    } catch (err: any) {
+      setError(err.message || "Erreur lors de la suppression");
     } finally {
       setIsProcessing(false);
     }
@@ -360,6 +390,18 @@ export default function AdminPage() {
                       </svg>
                       Voir
                     </button>
+
+                    <button
+                      onClick={() => openDeleteModal(story)}
+                      disabled={isProcessing}
+                      className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 rounded-xl text-sm font-medium transition-all flex items-center gap-2"
+                      title="Supprimer cette histoire"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Supprimer
+                    </button>
                   </div>
                 </div>
               </div>
@@ -416,6 +458,55 @@ export default function AdminPage() {
                 className="flex-1 px-4 py-3 bg-red-500/30 hover:bg-red-500/40 border border-red-500/50 text-white font-medium rounded-xl transition-all"
               >
                 {isProcessing ? "Censure..." : "Censurer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de suppression */}
+      {showDeleteModal && storyToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowDeleteModal(false)} />
+
+          <div className="relative bg-gradient-to-br from-gray-900 to-black border border-red-500/30 rounded-3xl p-8 max-w-md w-full shadow-2xl">
+            {/* Icône */}
+            <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-red-500/20 flex items-center justify-center">
+              <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+
+            <h2 className="text-2xl font-bold text-white text-center mb-2">
+              Supprimer définitivement ?
+            </h2>
+            <p className="text-white/60 text-center mb-2">
+              <span className="text-white font-medium">"{storyToDelete.title}"</span>
+              <br />
+              par {getAuthorDisplayName(storyToDelete.author)}
+            </p>
+
+            {/* Avertissement */}
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+              <p className="text-red-400/90 text-sm text-center">
+                ⚠️ Cette action est irréversible. L'histoire, toutes ses pages, choix et progressions des joueurs seront définitivement supprimés.
+              </p>
+            </div>
+
+            {/* Boutons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 font-medium rounded-xl transition-all"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={isProcessing}
+                className="flex-1 px-4 py-3 bg-red-500/30 hover:bg-red-500/40 border border-red-500/50 text-white font-medium rounded-xl transition-all"
+              >
+                {isProcessing ? "Suppression..." : "Supprimer"}
               </button>
             </div>
           </div>
