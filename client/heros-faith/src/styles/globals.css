@@ -23,6 +23,52 @@ body {
   box-sizing: border-box;
 }
 
+/* Optimisations de performance pour la fluidité */
+@media (prefers-reduced-motion: no-preference) {
+  * {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Accélération GPU pour les transitions */
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform;
+}
+
+/* Animation d'entrée par le bas */
+@keyframes slide-in-from-bottom {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-in {
+  animation-fill-mode: both;
+}
+
+.slide-in-from-bottom {
+  animation-name: slide-in-from-bottom;
+}
+
+/* Réduire les animations sur les appareils faibles */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Force nav links to inherit color and remove underline (handles visited state) */
 .nav a, .nav a:link, .nav a:visited {
   color: inherit;

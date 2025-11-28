@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, memo } from "react";
 import { createPortal } from "react-dom";
 import { logger } from "@/utils/logger";
 
@@ -26,7 +26,7 @@ interface StoryTreeVisualizationProps {
   onNodeSelect: (node: StoryNode) => void;
 }
 
-export default function StoryTreeVisualization({
+const StoryTreeVisualization = memo(function StoryTreeVisualization({
   nodes,
   currentNode,
   onNodeSelect,
@@ -1319,4 +1319,6 @@ export default function StoryTreeVisualization({
       )}
     </>
   );
-}
+});
+
+export default StoryTreeVisualization;

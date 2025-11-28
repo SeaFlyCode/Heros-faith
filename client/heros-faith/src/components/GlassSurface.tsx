@@ -99,13 +99,16 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
   // determine support flags on client only to avoid document access during SSR
   const [svgSupportedState, setSvgSupportedState] = useState<boolean>(false);
   const [backdropSupportedState, setBackdropSupportedState] = useState<boolean>(false);
+  const [isLowPerformance, setIsLowPerformance] = useState<boolean>(false);
 
   useEffect(() => {
     // run on client only
     const s = supportsSVGFilters();
     const b = supportsBackdropFilter();
+    const lowPerf = detectLowPerformance();
     setSvgSupportedState(s);
     setBackdropSupportedState(b);
+    setIsLowPerformance(lowPerf);
   }, []);
 
   const generateDisplacementMap = () => {
@@ -176,13 +179,17 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // Debounce pour éviter trop de recalculs
+    let timeoutId: NodeJS.Timeout;
     const resizeObserver = new ResizeObserver(() => {
-      setTimeout(updateDisplacementMap, 0);
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(updateDisplacementMap, 150); // Attendre 150ms
     });
 
     resizeObserver.observe(containerRef.current);
 
     return () => {
+      clearTimeout(timeoutId);
       resizeObserver.disconnect();
     };
   }, []);
@@ -190,6 +197,32 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
   useEffect(() => {
     setTimeout(updateDisplacementMap, 0);
   }, [width, height]);
+
+  const detectLowPerformance = () => {
+    if (typeof window === 'undefined') return false;
+
+    try {
+      // Détecter les appareils mobiles ou tablettes
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+      // Détecter les connexions lentes
+      const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+      const slowConnection = connection?.effectiveType === '2g' || connection?.effectiveType === 'slow-2g';
+
+      // Détecter le mode économie de batterie
+      const lowBattery = (navigator as any).getBattery?.().then((battery: any) => battery.level < 0.2);
+
+      // Détecter le nombre de cœurs processeur (< 4 = faible)
+      const lowCores = navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4;
+
+      // Détecter la mémoire disponible (< 4GB = faible)
+      const lowMemory = (performance as any).memory?.jsHeapSizeLimit < 4 * 1024 * 1024 * 1024;
+
+      return isMobile || slowConnection || lowCores || lowMemory || false;
+    } catch (e) {
+      return false;
+    }
+  };
 
   const supportsSVGFilters = () => {
     try {
@@ -215,7 +248,11 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
 
   const supportsBackdropFilter = () => {
     if (typeof window === 'undefined') return false;
-    return CSS.supports('backdrop-filter', 'blur(10px)');
+    try {
+      return CSS.supports('backdrop-filter', 'blur(10px)') || CSS.supports('-webkit-backdrop-filter', 'blur(10px)');
+    } catch (e) {
+      return false;
+    }
   };
 
   const getContainerStyles = (): React.CSSProperties => {
@@ -225,11 +262,26 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
       height: typeof height === 'number' ? `${height}px` : String(height),
       borderRadius: typeof borderRadius === 'number' ? `${borderRadius}px` : String(borderRadius),
       '--glass-frost': String(backgroundOpacity),
-      '--glass-saturation': String(saturation)
+      '--glass-saturation': String(saturation),
+      // Optimisations GPU
+      willChange: 'opacity, transform',
+      transform: 'translateZ(0)', // Force GPU acceleration
+      backfaceVisibility: 'hidden' as const,
+      perspective: '1000px'
     } as React.CSSProperties;
 
     const svgSupported = svgSupportedState;
     const backdropFilterSupported = backdropSupportedState;
+
+    // Mode ultra-simplifié pour performances faibles
+    if (isLowPerformance) {
+      return {
+        ...baseStyles,
+        background: isDarkMode ? 'rgba(0, 0, 0, 0.6)' : 'rgba(255, 255, 255, 0.6)',
+        border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0, 0, 0, 0.1)',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+      };
+    }
 
     if (svgSupported) {
       return {

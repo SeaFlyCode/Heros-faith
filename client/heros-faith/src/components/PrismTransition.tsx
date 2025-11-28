@@ -134,8 +134,11 @@ export default function PrismTransition({
       style={{
         // Transform scale normalisé par rapport à la référence 2.5
         // Cela permet des transitions fluides entre différentes tailles
-        transform: `scale(${currentScale / 2.5})`,
+        transform: `scale(${currentScale / 2.5}) translateZ(0)`,
         transformOrigin: "center center",
+        willChange: 'transform',
+        backfaceVisibility: 'hidden',
+        perspective: '1000px'
       }}
     >
       {/* Composant Prism avec scale de référence fixe à 2.5 */}
@@ -153,7 +156,13 @@ export default function PrismTransition({
       />
       
       {/* Overlay sombre pour améliorer le contraste avec le contenu */}
-      <div className="absolute inset-0 bg-black/40 pointer-events-none z-10" />
+      <div
+        className="absolute inset-0 bg-black/40 pointer-events-none z-10"
+        style={{
+          willChange: 'opacity',
+          transform: 'translateZ(0)'
+        }}
+      />
     </div>
   );
 }
