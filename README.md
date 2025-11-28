@@ -427,6 +427,37 @@ Ce projet est sous licence ISC.
 
 ---
 
+### ✅ Tâches Complétées
+
+- [x] **Bouton de signalement** (Sami)
+  - Ajout d'un bouton "Signaler" dans la page de lecture d'histoire
+  - Modal avec raisons prédéfinies pour le signalement
+  - Section admin pour gérer les signalements
+
+### 🔄 Tâches En Cours
+
+- [ ] **Ajouter une preview** (Sami)
+  - Prévisualisation des histoires avant publication
+
+- [ ] **Refactoring Backend - Architecture Services** (Mathéo)
+  - Déplacer les fonctions des controllers vers des services
+  - Meilleure séparation des responsabilités
+
+- [ ] **Supprimer une histoire** (Mathéo)
+  - Permettre aux auteurs de supprimer leurs histoires
+  - Gestion des dépendances (pages, choix, parties)
+
+- [ ] **Supprimer un utilisateur (Admin)** (Mathéo)
+  - Fonctionnalité admin pour supprimer un utilisateur
+  - Suppression en cascade de toutes ses données (histoires, parties, ratings, etc.)
+
+- [ ] **Refaire le déploiement**
+  - Mise à jour de la configuration de déploiement
+  - Déploiement sur l'environnement de production
+
+---
+
+
 <div align="center">
 
 **Made with ❤️ for SDV**
