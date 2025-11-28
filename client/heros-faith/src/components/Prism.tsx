@@ -46,14 +46,6 @@ const Prism: React.FC<PrismProps> = ({
     const container = containerRef.current;
     if (!container) return;
 
-    // Vérifier le support WebGL
-    const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-    if (!gl) {
-      console.warn('WebGL not supported, Prism effect disabled');
-      return;
-    }
-
     const H = Math.max(0.001, height);
     const BW = Math.max(0.001, baseWidth);
     const BASE_HALF = BW * 0.5;
@@ -73,36 +65,25 @@ const Prism: React.FC<PrismProps> = ({
     const HOVSTR = Math.max(0, hoverStrength || 1);
     const INERT = Math.max(0, Math.min(1, inertia || 0.12));
 
-    // Détecter les performances faibles et adapter la qualité
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const lowCores = navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4;
-    const isLowPerformance = isMobile || lowCores;
-
-    // Adapter DPR selon les performances
-    const maxDpr = isLowPerformance ? 1 : 2;
-    const dpr = Math.min(maxDpr, window.devicePixelRatio || 1);
-
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
     const renderer = new Renderer({
       dpr,
       alpha: transparent,
-      antialias: false, // Désactiver antialiasing pour meilleures perfs
-      powerPreference: isLowPerformance ? 'low-power' : 'high-performance'
+      antialias: false
     });
-    const glContext = renderer.gl;
-    glContext.disable(glContext.DEPTH_TEST);
-    glContext.disable(glContext.CULL_FACE);
-    glContext.disable(glContext.BLEND);
+    const gl = renderer.gl;
+    gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.CULL_FACE);
+    gl.disable(gl.BLEND);
 
-    Object.assign(glContext.canvas.style, {
+    Object.assign(gl.canvas.style, {
       position: 'absolute',
       inset: '0',
       width: '100%',
       height: '100%',
-      display: 'block',
-      willChange: 'transform',
-      transform: 'translateZ(0)' // GPU acceleration
+      display: 'block'
     } as Partial<CSSStyleDeclaration>);
-    container.appendChild(glContext.canvas);
+    container.appendChild(gl.canvas);
 
     const vertex = /* glsl */ `
       attribute vec2 position;
@@ -228,11 +209,11 @@ const Prism: React.FC<PrismProps> = ({
       }
     `;
 
-    const geometry = new Triangle(glContext);
+    const geometry = new Triangle(gl);
     const iResBuf = new Float32Array(2);
     const offsetPxBuf = new Float32Array(2);
 
-    const program = new Program(glContext, {
+    const program = new Program(gl, {
       vertex,
       fragment,
       uniforms: {
@@ -255,7 +236,7 @@ const Prism: React.FC<PrismProps> = ({
         uInvHeight: { value: 1 / H },
         uMinAxis: { value: Math.min(BASE_HALF, H) },
         uPxScale: {
-          value: 1 / ((glContext.drawingBufferHeight || 1) * 0.1 * SCALE)
+          value: 1 / ((gl.drawingBufferHeight || 1) * 0.1 * SCALE)
         },
         uTimeScale: { value: TS }
       }
@@ -263,19 +244,19 @@ const Prism: React.FC<PrismProps> = ({
 
     // Sauvegarder les références pour les mises à jour dynamiques
     programRef.current = program;
-    glRef.current = glContext;
+    glRef.current = gl;
 
-    const mesh = new Mesh(glContext, { geometry, program });
+    const mesh = new Mesh(gl, { geometry, program });
 
     const resize = () => {
       const w = container.clientWidth || 1;
       const h = container.clientHeight || 1;
       renderer.setSize(w, h);
-      iResBuf[0] = glContext.drawingBufferWidth;
-      iResBuf[1] = glContext.drawingBufferHeight;
+      iResBuf[0] = gl.drawingBufferWidth;
+      iResBuf[1] = gl.drawingBufferHeight;
       offsetPxBuf[0] = offX * dpr;
       offsetPxBuf[1] = offY * dpr;
-      program.uniforms.uPxScale.value = 1 / ((glContext.drawingBufferHeight || 1) * 0.1 * SCALE);
+      program.uniforms.uPxScale.value = 1 / ((gl.drawingBufferHeight || 1) * 0.1 * SCALE);
     };
     const ro = new ResizeObserver(resize);
     ro.observe(container);
@@ -458,10 +439,7 @@ const Prism: React.FC<PrismProps> = ({
         if (io) io.disconnect();
         delete (container as PrismContainer).__prismIO;
       }
-      const canvas = glContext.canvas;
-      if (canvas instanceof HTMLCanvasElement && canvas.parentElement === container) {
-        container.removeChild(canvas);
-      }
+      if (gl.canvas.parentElement === container) container.removeChild(gl.canvas);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animationType, transparent, suspendWhenOffscreen]); // Ne recréer que si ces props changent

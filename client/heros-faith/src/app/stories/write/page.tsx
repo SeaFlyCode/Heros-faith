@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-// import PrismTransition from "@/components/PrismTransition"; // Désactivé pour performances
+import PrismTransition from "@/components/PrismTransition";
 import StoryTreeVisualization from "@/components/StoryTreeVisualization";
 import { logger } from "@/utils/logger";
 import {
@@ -924,10 +924,9 @@ function WriteStoryPageContent() {
   }
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-900">
-      {/* Background statique pour améliorer les performances */}
-      {/* PrismTransition désactivé temporairement - consomme trop de CPU */}
-      {/* <div className="fixed inset-0 z-0 pointer-events-none">
+    <div className="relative min-h-screen w-full overflow-hidden bg-black">
+      {/* Background animé Prism avec transition */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
         <PrismTransition
           animationType="rotate"
           timeScale={0.5}
@@ -939,7 +938,7 @@ function WriteStoryPageContent() {
           noise={0.08}
           glow={0.8}
         />
-      </div> */}
+      </div>
 
       {/* Bouton retour */}
       <button

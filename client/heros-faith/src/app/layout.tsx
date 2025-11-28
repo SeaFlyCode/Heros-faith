@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "@/styles/globals.css";
 import ClientNavBarWrapper from "@/components/ClientNavBarWrapper";
-import BrowserSupportNotification from "@/components/BrowserSupportNotification";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,7 +33,6 @@ export default function RootLayout({
       >
         <ClientNavBarWrapper />
         <main className="min-h-screen">{children}</main>
-        <BrowserSupportNotification />
       </body>
     </html>
   );
