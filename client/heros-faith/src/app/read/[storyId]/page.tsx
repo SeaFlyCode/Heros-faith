@@ -198,6 +198,81 @@ const ResumeModal = ({
   );
 };
 
+// Modal pour histoire déjà terminée
+const CompletedStoryModal = ({
+  isOpen,
+  onRestart,
+  onGoBack,
+  storyTitle,
+  endingLabel,
+}: {
+  isOpen: boolean;
+  onRestart: () => void;
+  onGoBack: () => void;
+  storyTitle: string;
+  endingLabel?: string;
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+
+      {/* Modal */}
+      <div className="relative bg-gradient-to-br from-gray-900 to-black border border-white/20 rounded-3xl p-8 max-w-md w-full shadow-2xl">
+        {/* Icône */}
+        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-green-500/20 to-emerald-500/20 flex items-center justify-center">
+          <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+
+        {/* Titre */}
+        <h2 className="text-2xl font-bold text-white text-center mb-2">
+          Histoire déjà terminée !
+        </h2>
+        <p className="text-white/60 text-center mb-2">
+          Vous avez déjà lu <span className="text-white font-medium">"{storyTitle}"</span>
+        </p>
+        {endingLabel && (
+          <p className="text-green-400/80 text-center text-sm mb-6">
+            Fin atteinte : {endingLabel}
+          </p>
+        )}
+
+        {/* Message */}
+        <p className="text-white/70 text-center mb-6">
+          Voulez-vous recommencer l'aventure et peut-être découvrir une autre fin ?
+        </p>
+
+        {/* Boutons */}
+        <div className="space-y-3">
+          <button
+            onClick={onRestart}
+            className="w-full px-6 py-4 bg-gradient-to-r from-purple-500/30 to-pink-500/30 hover:from-purple-500/40 hover:to-pink-500/40 border border-purple-400/50 text-white font-semibold rounded-xl transition-all duration-300 flex items-center justify-center gap-3"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Recommencer l'histoire
+          </button>
+
+          <button
+            onClick={onGoBack}
+            className="w-full px-6 py-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white/70 hover:text-white font-medium rounded-xl transition-all duration-300 flex items-center justify-center gap-3"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Retour aux histoires
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function ReadStoryPage() {
   const router = useRouter();
   const params = useParams();
@@ -221,6 +296,8 @@ export default function ReadStoryPage() {
   const [hasCompletedEnding, setHasCompletedEnding] = useState(false);
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [resumeData, setResumeData] = useState<{ party: any; pagesData: StoryPage[] } | null>(null);
+  const [showCompletedModal, setShowCompletedModal] = useState(false);
+  const [completedPartyData, setCompletedPartyData] = useState<{ party: any; pagesData: StoryPage[] } | null>(null);
 
   // Mettre à jour la ref quand partyId change
   useEffect(() => {
@@ -266,21 +343,34 @@ export default function ReadStoryPage() {
 
       // Créer ou récupérer une partie pour cette histoire
       let currentParty: any = null;
+      let completedParty: any = null;
+      
       if (user) {
         try {
-          // Chercher une partie existante non terminée
+          // Chercher toutes les parties de l'utilisateur pour cette histoire
           const userParties = await partiesApi.getByUserId(user._id);
           
+          // Chercher une partie non terminée
           const existingParty = userParties.find((p: any) => {
-            // Gérer le cas où story_id peut être un objet ou une chaîne
             const partyStoryId = typeof p.story_id === 'object' ? p.story_id._id : p.story_id;
             return partyStoryId === storyId && !p.end_date;
           });
 
+          // Chercher une partie terminée (la plus récente)
+          const completedParties = userParties.filter((p: any) => {
+            const partyStoryId = typeof p.story_id === 'object' ? p.story_id._id : p.story_id;
+            return partyStoryId === storyId && p.end_date;
+          }).sort((a: any, b: any) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime());
+          
+          if (completedParties.length > 0) {
+            completedParty = completedParties[0];
+            console.log("✅ Partie terminée trouvée, fin atteinte:", completedParty.ending_id);
+          }
+
           if (existingParty) {
             setPartyId(existingParty._id);
             currentParty = existingParty;
-            console.log("📚 Partie existante trouvée, progression:", existingParty.path.length, "pages visitées");
+            console.log("📚 Partie en cours trouvée, progression:", existingParty.path.length, "pages visitées");
 
             // Si l'utilisateur est l'auteur ET qu'il a une progression
             // On réinitialise automatiquement car c'est probablement de l'écriture
@@ -292,6 +382,13 @@ export default function ReadStoryPage() {
               }).catch(err => console.error("Erreur lors de la réinitialisation:", err));
               currentParty.path = []; // Réinitialiser localement aussi
             }
+          } else if (completedParty && !isAuthor) {
+            // L'utilisateur a terminé cette histoire - lui proposer de recommencer
+            console.log("🏁 L'utilisateur a déjà terminé cette histoire");
+            setCompletedPartyData({ party: completedParty, pagesData });
+            setShowCompletedModal(true);
+            setIsLoading(false);
+            return; // Arrêter ici, l'utilisateur choisira
           } else {
             // Créer une nouvelle partie
             const newParty = await partiesApi.create({
@@ -670,6 +767,42 @@ export default function ReadStoryPage() {
     }
   };
 
+  // Recommencer une histoire déjà terminée
+  const handleRestartCompletedStory = async () => {
+    if (!completedPartyData || !user) return;
+
+    const { pagesData } = completedPartyData;
+
+    try {
+      // Créer une nouvelle partie pour cette histoire
+      const newParty = await partiesApi.create({
+        user_id: user._id,
+        story_id: storyId,
+      });
+      setPartyId(newParty._id);
+      console.log("🆕 Nouvelle partie créée pour relecture");
+
+      setPageHistory([]);
+      setHasCompletedEnding(false);
+      setShowCompletedModal(false);
+      setPages(pagesData);
+
+      // Démarrer depuis le début
+      const firstPage = await findFirstPage(pagesData);
+      if (firstPage) {
+        await navigateToPage(firstPage._id, pagesData);
+      }
+    } catch (err) {
+      console.error("Erreur lors de la création de la nouvelle partie:", err);
+      setError("Erreur lors du redémarrage de l'histoire");
+    }
+  };
+
+  // Retour aux histoires (depuis le modal terminé)
+  const handleGoBackToStories = () => {
+    router.push("/read");
+  };
+
   if (authLoading || isLoading) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-black">
@@ -937,6 +1070,17 @@ export default function ReadStoryPage() {
         onResume={handleResumeReading}
         onRestart={handleStartFresh}
         progressLength={resumeData?.party?.path?.length || 0}
+      />
+
+      {/* Modal pour histoire déjà terminée */}
+      <CompletedStoryModal
+        isOpen={showCompletedModal}
+        onRestart={handleRestartCompletedStory}
+        onGoBack={handleGoBackToStories}
+        storyTitle={story?.title || "cette histoire"}
+        endingLabel={completedPartyData?.party?.ending_id ? 
+          pages.find(p => p._id === completedPartyData.party.ending_id)?.ending_label : undefined
+        }
       />
     </div>
   );
